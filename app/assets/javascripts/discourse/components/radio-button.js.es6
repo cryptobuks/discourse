@@ -1,11 +1,26 @@
+import computed from "ember-addons/ember-computed-decorators";
+
 export default Ember.Component.extend({
-  tagName : "input",
-  type : "radio",
-  attributeBindings : [ "name", "type", "value", "checked:checked" ],
-  click : function() {
-    this.set("selection", this.$().val());
+  tagName: "input",
+  type: "radio",
+  attributeBindings: [
+    "name",
+    "type",
+    "value",
+    "checked:checked",
+    "disabled:disabled"
+  ],
+
+  click() {
+    const value = this.$().val();
+    if (this.selection === value) {
+      this.set("selection", undefined);
+    }
+    this.set("selection", value);
   },
-  checked : function() {
-    return this.get("value") === this.get("selection");
-  }.property('selection'),
+
+  @computed("value", "selection")
+  checked(value, selection) {
+    return value === selection;
+  }
 });

@@ -1,4 +1,6 @@
-class RemoveTrustLevels < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class RemoveTrustLevels < ActiveRecord::Migration[4.2]
   def up
     drop_table :trust_levels
     change_column_default :users, :trust_level_id, TrustLevel[0]

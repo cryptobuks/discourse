@@ -1,4 +1,6 @@
-class SetDefaultS3Region < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class SetDefaultS3Region < ActiveRecord::Migration[4.2]
   def up
     execute <<-SQL
       UPDATE site_settings

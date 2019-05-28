@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # barber patches to re-route raw compilation via ember compat handlebars
 
 class Barber::Precompiler
@@ -14,7 +16,7 @@ class Barber::Precompiler
       transpiled = template.babel_transpile(source)
 
       # very hacky but lets us use ES6. I'm ashamed of this code -RW
-      transpiled.gsub!(/^export .*$/, '')
+      transpiled = transpiled[0...transpiled.index('export ')]
 
       @precompiler = StringIO.new <<END
       var __RawHandlebars;
@@ -40,11 +42,11 @@ module Discourse
     module Handlebars
       module Helper
         def precompile_handlebars(string)
-          "require('discourse-common/lib/raw-handlebars').template(#{Barber::Precompiler.compile(string)});"
+          "requirejs('discourse-common/lib/raw-handlebars').template(#{Barber::Precompiler.compile(string)});"
         end
 
         def compile_handlebars(string)
-          "require('discourse-common/lib/raw-handlebars').compile(#{indent(string).inspect});"
+          "requirejs('discourse-common/lib/raw-handlebars').compile(#{indent(string).inspect});"
         end
       end
     end
@@ -54,12 +56,12 @@ end
 class Ember::Handlebars::Template
   include Discourse::Ember::Handlebars::Helper
 
-  def precompile_handlebars(string, input=nil)
-    "require('discourse-common/lib/raw-handlebars').template(#{Barber::Precompiler.compile(string)});"
+  def precompile_handlebars(string, input = nil)
+    "requirejs('discourse-common/lib/raw-handlebars').template(#{Barber::Precompiler.compile(string)});"
   end
 
-  def compile_handlebars(string, input=nil)
-    "require('discourse-common/lib/raw-handlebars').compile(#{indent(string).inspect});"
+  def compile_handlebars(string, input = nil)
+    "requirejs('discourse-common/lib/raw-handlebars').compile(#{indent(string).inspect});"
   end
 
   def global_template_target(namespace, module_name, config)

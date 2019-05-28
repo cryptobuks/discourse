@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="<%= SiteSetting.default_locale %>" class="<%= html_classes %>">
+<html lang="<%= html_lang %>" class="<%= html_classes %>">
   <head>
     <meta charset="utf-8">
-    <title><%= content_for?(:title) ? yield(:title) + ' - ' + SiteSetting.title : SiteSetting.title %></title>
+    <title><%= content_for?(:title) ? yield(:title) : SiteSetting.title %></title>
     <meta name="description" content="<%= @description_meta || SiteSetting.site_description %>">
+    <meta name="discourse_theme_ids" content="<%= theme_ids&.join(",") %>">
+    <meta name="discourse_current_homepage" content="<%= current_homepage %>">
     <%= render partial: "layouts/head" %>
-    <%= render partial: "common/special_font_face" %>
-    <%= render partial: "common/discourse_stylesheet" %>
     <%= discourse_csrf_tags %>
 
     <%- if SiteSetting.enable_escaped_fragments? %>
@@ -17,48 +17,54 @@
       <meta name="shared_session_key" content="<%= shared_session_key %>">
     <%- end %>
 
-    <script>
-      window.EmberENV = window.EmberENV || {};
-      window.EmberENV['FORCE_JQUERY'] = true;
-    </script>
+    <%= build_plugin_html 'server:before-script-load' %>
 
-    <%= script "locales/#{I18n.locale}" %>
-    <%= script "ember_jquery" %>
-    <%= script "preload-store" %>
-    <%= script "vendor" %>
-    <%= script "pretty-text-bundle" %>
-    <%= script "application" %>
+    <%= preload_script "locales/#{I18n.locale}" %>
+    <%= preload_script "ember_jquery" %>
+    <%= preload_script "preload-store" %>
+    <%= preload_script "vendor" %>
+    <%= preload_script "pretty-text-bundle" %>
+    <%= preload_script "application" %>
     <%- if allow_plugins? %>
-    <%= script "plugin" %>
+    <%= preload_script "plugin" %>
     <%- end %>
     <%- if allow_third_party_plugins? %>
-    <%= script "plugin-third-party" %>
+    <%= preload_script "plugin-third-party" %>
     <%- end %>
 
     <%- if staff? %>
-      <script src="<%= Discourse.base_uri %>/extra-locales/admin"></script>
-      <%= script "admin" %>
+      <script src="<%= ExtraLocalesController.url('admin') %>"></script>
+      <%= preload_script "admin" %>
     <%- end %>
 
     <%- unless customization_disabled? %>
-      <%= raw SiteCustomization.custom_head_tag(session[:preview_style]) %>
+      <%= raw theme_translations_lookup %>
+      <%= raw theme_lookup("head_tag") %>
     <%- end %>
 
+    <%= render_google_tag_manager_head_code %>
     <%= render_google_universal_analytics_code %>
-    <link rel="manifest" href="<%= Discourse.base_uri %>/manifest.json">
+    <link rel="manifest" href="<%= Discourse.base_uri %>/manifest.webmanifest" crossorigin="use-credentials">
 
-    <%- if SiteSetting.native_app_install_banner? %>
-        <meta name="apple-itunes-app" content="app-id=1173672076">
+    <%- if include_ios_native_app_banner? %>
+        <meta name="apple-itunes-app" content="app-id=<%= SiteSetting.ios_app_id %>, app-argument=discourse://new?siteUrl=<%= Discourse.base_url %>">
     <%- end %>
+
+    <%= render partial: "common/discourse_stylesheet" %>
 
     <%= yield :head %>
+
+    <%= build_plugin_html 'server:before-head-close' %>
+
+    <%= tag.meta id: 'data-discourse-setup', data: client_side_setup_data %>
+
+    <%- if !current_user && cookies[:authentication_data] %>
+      <meta id="data-authentication" data-authentication-data="<%= cookies.delete(:authentication_data) %>">
+    <%- end %>
   </head>
 
   <body class="<%= body_classes %>">
-    <%= render_google_tag_manager_code %>
-
-    <div class='debug-eyeline'></div>
-
+    <%= render_google_tag_manager_body_code %>
     <noscript data-path="<%= request.env['PATH_INFO'] %>">
       <%= render partial: 'header' %>
       <div id="main-outlet" class="wrap">
@@ -77,12 +83,13 @@
       </div>
 
       <footer id='noscript-footer'>
-        <p><%= t 'powered_by_html' %></p>
+        <p style="text-align:center;"><%= t 'powered_by_html' %></p>
       </footer>
     </noscript>
 
-    <%- unless customization_disabled? || loading_admin? %>
-      <%= SiteCustomization.custom_header(session[:preview_style], mobile_view? ? :mobile : :desktop) %>
+    <%- unless customization_disabled? %>
+      <%= theme_lookup("header") %>
+      <%= build_plugin_html 'server:header' %>
     <%- end %>
 
     <section id='main'>
@@ -100,25 +107,16 @@
       </form>
     <% end %>
 
-    <%- if @preloaded.present? %>
-      <script>
-      (function() {
-        var ps = require('preload-store').default;
-        <%- @preloaded.each do |key, json| %>
-          ps.store("<%= key %>", <%= escape_unicode(json) %>);
-        <% end %>
-      })();
-      </script>
-    <%- end %>
+    <div class="hidden" id="data-preloaded" data-preloaded="<%= preloaded_json %>"></div>
+    <%= preload_script "preload-application-data" %>
 
     <%= yield :data %>
 
-    <%= render :partial => "common/discourse_javascript" %>
-
-    <%= render_google_analytics_code %>
+    <%= preload_script 'browser-update' %>
 
     <%- unless customization_disabled? %>
-      <%= raw SiteCustomization.custom_body_tag(session[:preview_style]) %>
+      <%= raw theme_lookup("body_tag") %>
     <%- end %>
+    <%= build_plugin_html 'server:before-body-close' %>
   </body>
 </html>

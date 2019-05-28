@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class InvitedUserSerializer < BasicUserSerializer
 
   attributes :topics_entered,
@@ -10,7 +12,7 @@ class InvitedUserSerializer < BasicUserSerializer
   attr_accessor :invited_by
 
   def time_read
-    AgeWords.age_words(object.user_stat.time_read)
+    object.user_stat.time_read
   end
 
   def include_time_read?

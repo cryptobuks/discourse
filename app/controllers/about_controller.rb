@@ -1,13 +1,18 @@
+# frozen_string_literal: true
+
 require_dependency 'rate_limiter'
 
 class AboutController < ApplicationController
-  skip_before_filter :check_xhr, only: [:index]
-  before_filter :ensure_logged_in, only: [:live_post_counts]
+
+  requires_login only: [:live_post_counts]
+
+  skip_before_action :check_xhr, only: [:index]
 
   def index
     return redirect_to path('/login') if SiteSetting.login_required? && current_user.nil?
 
     @about = About.new
+    @title = "#{I18n.t("js.about.simple_title")} - #{SiteSetting.title}"
     respond_to do |format|
       format.html do
         render :index

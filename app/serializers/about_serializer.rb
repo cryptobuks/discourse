@@ -1,6 +1,13 @@
+# frozen_string_literal: true
+
 class AboutSerializer < ApplicationSerializer
-  has_many :moderators, serializer: UserNameSerializer, embed: :objects
-  has_many :admins, serializer: UserNameSerializer, embed: :objects
+
+  class UserAboutSerializer < BasicUserSerializer
+    attributes :title, :last_seen_at
+  end
+
+  has_many :moderators, serializer: UserAboutSerializer, embed: :objects
+  has_many :admins, serializer: UserAboutSerializer, embed: :objects
 
   attributes :stats,
              :description,

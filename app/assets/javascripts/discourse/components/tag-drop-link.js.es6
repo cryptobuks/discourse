@@ -1,25 +1,33 @@
-import DiscourseURL from 'discourse/lib/url';
+import DiscourseURL from "discourse/lib/url";
+import computed from "ember-addons/ember-computed-decorators";
 
 export default Ember.Component.extend({
-  tagName: 'a',
-  classNameBindings: [':tag-badge-wrapper', ':badge-wrapper', ':bullet', 'tagClass'],
-  attributeBindings: ['href'],
+  tagName: "a",
+  classNameBindings: [
+    ":tag-badge-wrapper",
+    ":badge-wrapper",
+    ":bullet",
+    "tagClass"
+  ],
+  attributeBindings: ["href"],
 
-  href: function() {
-    var url = '/tags';
-    if (this.get('category')) {
-      url += this.get('category.url');
+  @computed("tagId", "category")
+  href(tagId, category) {
+    var url = "/tags";
+    if (category) {
+      url += category.url;
     }
-    return url + '/' + this.get('tagId');
-  }.property('tagId', 'category'),
+    return url + "/" + tagId;
+  },
 
-  tagClass: function() {
-    return "tag-" + this.get('tagId');
-  }.property('tagId'),
+  @computed("tagId")
+  tagClass(tagId) {
+    return "tag-" + tagId;
+  },
 
   click(e) {
     e.preventDefault();
-    DiscourseURL.routeTo(this.get('href'));
+    DiscourseURL.routeTo(this.href);
     return true;
   }
 });

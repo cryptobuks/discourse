@@ -1,4 +1,6 @@
-class RenameContentType < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class RenameContentType < ActiveRecord::Migration[4.2]
   def change
     rename_column :site_contents, :content_type, :text_type
     rename_column :site_contents, :content, :value

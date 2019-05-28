@@ -1,8 +1,8 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe UserStat do
-
-  it { is_expected.to belong_to :user }
 
   it "is created automatically when a user is created" do
     user = Fabricate(:evil_trout)
@@ -25,7 +25,7 @@ describe UserStat do
       end
 
       context 'with a view' do
-        let(:topic) { Fabricate(:topic) }
+        fab!(:topic) { Fabricate(:topic) }
         let!(:view) { TopicViewItem.add(topic.id, '127.0.0.1', user.id) }
 
         before do
@@ -74,28 +74,56 @@ describe UserStat do
     end
   end
 
+  describe 'ensure consistency!' do
+    it 'can update first unread' do
+      post = create_post
+
+      freeze_time 10.minutes.from_now
+      create_post(topic_id: post.topic_id)
+
+      post.user.update!(last_seen_at: Time.now)
+
+      UserStat.ensure_consistency!
+
+      post.user.user_stat.reload
+      expect(post.user.user_stat.first_unread_at).to eq_time(Time.now)
+    end
+  end
 
   describe 'update_time_read!' do
-    let(:user) { Fabricate(:user) }
+    fab!(:user) { Fabricate(:user) }
     let(:stat) { user.user_stat }
 
+    it 'always expires redis key' do
+      # this tests implementation which is not 100% ideal
+      # that said, redis key leaks are not good
+      stat.update_time_read!
+      ttl = $redis.ttl(UserStat.last_seen_key(user.id))
+      expect(ttl).to be > 0
+      expect(ttl).to be <= UserStat::MAX_TIME_READ_DIFF
+    end
+
     it 'makes no changes if nothing is cached' do
-      stat.expects(:last_seen_cached).returns(nil)
+      $redis.del(UserStat.last_seen_key(user.id))
       stat.update_time_read!
       stat.reload
       expect(stat.time_read).to eq(0)
     end
 
     it 'makes a change if time read is below threshold' do
-      stat.expects(:last_seen_cached).returns(Time.now - 10)
+      freeze_time
+      UserStat.cache_last_seen(user.id, (Time.now - 10).to_f)
       stat.update_time_read!
       stat.reload
       expect(stat.time_read).to eq(10)
     end
 
     it 'makes no change if time read is above threshold' do
+      freeze_time
+
       t = Time.now - 1 - UserStat::MAX_TIME_READ_DIFF
-      stat.expects(:last_seen_cached).returns(t)
+      UserStat.cache_last_seen(user.id, t.to_f)
+
       stat.update_time_read!
       stat.reload
       expect(stat.time_read).to eq(0)

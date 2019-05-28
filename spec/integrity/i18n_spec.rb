@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 require "i18n/duplicate_key_finder"
 
@@ -6,6 +8,7 @@ def extract_locale(path)
 end
 
 PLURALIZATION_KEYS ||= ['zero', 'one', 'two', 'few', 'many', 'other']
+ENGLISH_KEYS ||= ['one', 'other']
 
 def find_pluralizations(hash, parent_key = '', pluralizations = Hash.new)
   hash.each do |key, value|
@@ -36,6 +39,17 @@ def is_yaml_compatible?(english, translated)
   true
 end
 
+def each_translation(hash, parent_key = '', &block)
+  hash.each do |key, value|
+    current_key = parent_key.blank? ? key : "#{parent_key}.#{key}"
+
+    if Hash === value
+      each_translation(value, current_key, &block)
+    else
+      yield(current_key, value.to_s)
+    end
+  end
+end
 
 describe "i18n integrity checks" do
 
@@ -59,6 +73,16 @@ describe "i18n integrity checks" do
     end
   end
 
+  Dir["#{Rails.root}/config/locales/{client,server}.*.yml"].each do |path|
+    it "does not contain invalid interpolation keys for '#{path}'" do
+      matches = File.read(path).scan(/%\{([^a-zA-Z\s]+)\}|\{\{([^a-zA-Z\s]+)\}\}/)
+      matches.flatten!
+      matches.compact!
+      matches.uniq!
+      expect(matches).to eq([])
+    end
+  end
+
   Dir["#{Rails.root}/config/locales/client.*.yml"].each do |path|
     it "has valid client YAML for '#{path}'" do
       yaml = YAML.load_file(path)
@@ -67,8 +91,11 @@ describe "i18n integrity checks" do
       expect(yaml.keys).to eq([locale])
 
       expect(yaml[locale]["js"]).to be
-      expect(yaml[locale]["admin_js"]).to be
-      # expect(yaml[locale]["wizard_js"]).to be
+
+      if !LocaleSiteSetting.fallback_locale(locale)
+        expect(yaml[locale]["admin_js"]).to be
+        expect(yaml[locale]["wizard_js"]).to be
+      end
     end
   end
 
@@ -81,11 +108,56 @@ describe "i18n integrity checks" do
         expect(english_duplicates).to be_empty
       end
 
-      find_pluralizations(english_yaml).each do |key, hash|
-        next if key["messages.restrict_dependent_destroy"]
+      context "pluralizations" do
+        wrong_keys = []
+        invald_one_keys = []
 
-        it "has valid pluralizations for '#{key}'" do
-          expect(hash.keys).to contain_exactly("one", "other")
+        find_pluralizations(english_yaml).each do |key, hash|
+          next if key["messages.restrict_dependent_destroy"]
+
+          wrong_keys << key if hash.keys.sort != ENGLISH_KEYS
+
+          if one_value = hash['one']
+            invald_one_keys << key if one_value.include?('1') && !one_value.match?(/%{count}|{{count}}/)
+          end
+        end
+
+        it "has valid pluralizations keys" do
+          keys = wrong_keys.join("\n")
+          expect(wrong_keys).to be_empty, <<~MSG
+            Pluralized strings must have only the sub-keys 'one' and 'other'.
+            The following keys have missing or additional keys:\n\n#{keys}
+          MSG
+        end
+
+        it "should use %{count} instead of 1 in 'one' keys" do
+          keys = invald_one_keys.join(".one\n")
+          expect(invald_one_keys).to be_empty, <<~MSG
+            The following keys contain the number 1 instead of the interpolation key %{count}:\n\n#{keys}
+          MSG
+        end
+      end
+
+      context "valid translations" do
+        invalid_relative_links = {}
+        invalid_relative_image_sources = {}
+
+        each_translation(english_yaml) do |key, value|
+          if value.match?(/href\s*=\s*["']\/[^\/]|\]\(\/[^\/]/i)
+            invalid_relative_links[key] = value
+          elsif value.match?(/src\s*=\s*["']\/[^\/]/i)
+            invalid_relative_image_sources[key] = value
+          end
+        end
+
+        it "uses %{base_url} or %{base_path} for relative links" do
+          keys = invalid_relative_links.keys.join("\n")
+          expect(invalid_relative_links).to be_empty, "The following keys have relative links, but do not start with %{base_url} or %{base_path}:\n\n#{keys}"
+        end
+
+        it "uses %{base_url} or %{base_path} for relative image src" do
+          keys = invalid_relative_image_sources.keys.join("\n")
+          expect(invalid_relative_image_sources).to be_empty, "The following keys have relative image sources, but do not start with %{base_url} or %{base_path}:\n\n#{keys}"
         end
       end
     end

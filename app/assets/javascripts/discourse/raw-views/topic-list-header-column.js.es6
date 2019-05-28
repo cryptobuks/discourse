@@ -1,37 +1,46 @@
+import { default as computed } from "ember-addons/ember-computed-decorators";
+
 export default Ember.Object.extend({
-  localizedName: function(){
-    if(this.forceName){
+  @computed
+  localizedName() {
+    if (this.forceName) {
       return this.forceName;
     }
 
-    return I18n.t(this.name);
-  }.property(),
+    return this.name ? I18n.t(this.name) : "";
+  },
 
-  sortClass: function(){
-    return "fa fa-chevron-" + (this.parent.ascending ? "up" : "down");
-  }.property(),
+  @computed
+  sortIcon() {
+    const asc = this.parent.ascending ? "up" : "down";
+    return `chevron-${asc}`;
+  },
 
-  isSorting: function(){
+  @computed
+  isSorting() {
     return this.sortable && this.parent.order === this.order;
-  }.property(),
+  },
 
-  className: function(){
-    var name = [];
-    if(this.order){
+  @computed
+  className() {
+    const name = [];
+
+    if (this.order) {
       name.push(this.order);
     }
-    if(this.sortable){
+
+    if (this.sortable) {
       name.push("sortable");
 
-      if(this.get("isSorting")){
+      if (this.isSorting) {
         name.push("sorting");
       }
     }
 
-    if(this.number){
+    if (this.number) {
       name.push("num");
     }
 
-    return name.join(' ');
-  }.property()
+    return name.join(" ");
+  }
 });

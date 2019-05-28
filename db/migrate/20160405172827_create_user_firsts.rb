@@ -1,4 +1,6 @@
-class CreateUserFirsts < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CreateUserFirsts < ActiveRecord::Migration[4.2]
   def change
     create_table :user_firsts, force: true do |t|
       t.integer :user_id, null: false

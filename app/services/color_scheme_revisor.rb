@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 class ColorSchemeRevisor
 
-  def initialize(color_scheme, params={})
+  def initialize(color_scheme, params = {})
     @color_scheme = color_scheme
     @params = params
   end
@@ -9,63 +11,31 @@ class ColorSchemeRevisor
     self.new(color_scheme, params).revise
   end
 
-  def self.revert(color_scheme)
-    self.new(color_scheme).revert
-  end
-
   def revise
     ColorScheme.transaction do
-      if @params[:enabled]
-        ColorScheme.where('id != ?', @color_scheme.id).update_all enabled: false
-      end
 
-      @color_scheme.name    = @params[:name]    if @params.has_key?(:name)
-      @color_scheme.enabled = @params[:enabled] if @params.has_key?(:enabled)
-      @color_scheme.theme_id = @params[:theme_id] if @params.has_key?(:theme_id)
-      new_version = false
+      @color_scheme.name = @params[:name]    if @params.has_key?(:name)
+      @color_scheme.base_scheme_id = @params[:base_scheme_id] if @params.has_key?(:base_scheme_id)
+      has_colors = @params[:colors]
 
-      if @params[:colors]
-        new_version = @params[:colors].any? do |c|
-          (existing = @color_scheme.colors_by_name[c[:name]]).nil? or existing.hex != c[:hex]
-        end
-      end
-
-      if new_version
-        ColorScheme.create(
-          name: @color_scheme.name,
-          enabled: false,
-          colors: @color_scheme.colors_hashes,
-          versioned_id: @color_scheme.id,
-          version: @color_scheme.version)
-        @color_scheme.version += 1
-      end
-
-      if @params[:colors]
+      if has_colors
         @params[:colors].each do |c|
           if existing = @color_scheme.colors_by_name[c[:name]]
-            existing.update_attributes(c)
+            existing.update(c)
+          else
+            @color_scheme.color_scheme_colors << ColorSchemeColor.new(name: c[:name], hex: c[:hex])
           end
         end
-      end
-
-      @color_scheme.save
-      @color_scheme.clear_colors_cache
-    end
-    @color_scheme
-  end
-
-  def revert
-    ColorScheme.transaction do
-      if prev = @color_scheme.previous_version
-        @color_scheme.version = prev.version
-        @color_scheme.colors.clear
-        prev.colors.update_all(color_scheme_id: @color_scheme.id)
-        prev.destroy
-        @color_scheme.save!
         @color_scheme.clear_colors_cache
       end
-    end
 
+      if has_colors ||
+         @color_scheme.saved_change_to_name? ||
+         @color_scheme.saved_change_to_base_scheme_id?
+
+        @color_scheme.save
+      end
+    end
     @color_scheme
   end
 

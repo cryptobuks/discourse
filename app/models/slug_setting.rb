@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_dependency 'enum_site_setting'
 
 class SlugSetting < EnumSiteSetting
@@ -10,7 +12,7 @@ class SlugSetting < EnumSiteSetting
 
   def self.values
     VALUES.map do |l|
-      {name: l, value: l}
+      { name: l, value: l }
     end
   end
 

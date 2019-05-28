@@ -1,4 +1,6 @@
-class CreateUserProfileViews < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CreateUserProfileViews < ActiveRecord::Migration[4.2]
   def change
     create_table :user_profile_views do |t|
       t.integer :user_profile_id, null: false

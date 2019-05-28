@@ -1,32 +1,40 @@
-<a href="http://www.discourse.org/">![Logo](images/discourse.png)</a>
+<a href="https://www.discourse.org/"><img src=
+"https://user-images.githubusercontent.com/1681963/52239617-e2683480-289c-11e9-922b-5da55472e5b4.png"
+ width="300px"></a>
 
-Discourse is the 100% open source discussion platform built for the next decade of the Internet. It works as:
 
-- a mailing list
-- a discussion forum
-- a long-form chat room
 
-To learn more about the philosophy and goals of the project, [visit **discourse.org**](http://www.discourse.org).
+Discourse is the 100% open source discussion platform built for the next decade of the Internet. Use it as a:
+
+- mailing list
+- discussion forum
+- long-form chat room
+
+To learn more about the philosophy and goals of the project, [visit **discourse.org**](https://www.discourse.org).
 
 ## Screenshots
 
-<a href="https://bbs.boingboing.net"><img src="https://www.discourse.org/faq/14/boing-boing-discourse.png" width="720px"></a>
-<a href="https://twittercommunity.com/"><img src="https://www.discourse.org/faq/17/twitter-discourse.png" width="720px"></a>
-<a href="http://discuss.howtogeek.com"><img src="https://www.discourse.org/faq/17/how-to-geek-discourse.png" width="720px"></a>
-<a href="https://talk.turtlerockstudios.com/"><img src="https://www.discourse.org/faq/17/turtle-rock-discourse.png" width="720px"></a>
 
-<a href="https://discuss.atom.io"><img src="https://www.discourse.org/faq/17/nexus-7-2013-mobile-discourse.png" alt="Atom" width="430px"></a> &nbsp;
-<a href="//discourse.soylent.com"><img src="https://www.discourse.org/faq/15/iphone-5s-mobile-discourse.png" alt="Soylent" width="270px"></a>
+<a href="https://bbs.boingboing.net"><img alt="Boing Boing" src="https://user-images.githubusercontent.com/1681963/52239245-04ad8280-289c-11e9-9c88-8c173d4a0422.png" width="720px"></a>
+<a href="https://twittercommunity.com/"><img src="https://user-images.githubusercontent.com/1681963/52239250-04ad8280-289c-11e9-9e42-574f6eaab9d7.png" width="720px"></a>
+<a href="https://discuss.howtogeek.com"><img src="https://user-images.githubusercontent.com/1681963/52239247-04ad8280-289c-11e9-9706-fd66bc0749dc.png" width="720px"></a>
+<a href="https://talk.turtlerockstudios.com/"><img src="https://user-images.githubusercontent.com/1681963/52239249-04ad8280-289c-11e9-9155-f0ccc5decc50.png" width="720px"></a>
 
-Browse [lots more notable Discourse instances](http://www.discourse.org/faq/customers/).
+<img src="https://user-images.githubusercontent.com/1681963/52239118-b304f800-289b-11e9-9904-16450680d9ec.jpg" alt="Mobile" width="414">
+
+Browse [lots more notable Discourse instances](https://www.discourse.org/customers).
 
 ## Development
 
-1. If you're **brand new to Ruby and Rails**, please see [**Discourse as Your First Rails App**](http://blog.discourse.org/2013/04/discourse-as-your-first-rails-app/) or our [**Discourse Vagrant Developer Guide**](docs/VAGRANT.md), which includes a development environment in a virtual machine.
+To get your environment setup, follow the community setup guide for your operating system.
 
-2. If you're familiar with how Rails works and are comfortable setting up your own environment, use our [**Discourse Advanced Developer Guide**](docs/DEVELOPER-ADVANCED.md).
+1. If you're on macOS, try the [macOS development guide](https://meta.discourse.org/t/beginners-guide-to-install-discourse-on-macos-for-development/15772).
+1. If you're on Ubuntu, try the [Ubuntu development guide](https://meta.discourse.org/t/beginners-guide-to-install-discourse-on-ubuntu-for-development/14727).
+1. If you're on Windows, try the [Windows 10 development guide](https://meta.discourse.org/t/beginners-guide-to-install-discourse-on-windows-10-for-development/75149).
 
-Before you get started, ensure you have the following minimum versions: [Ruby 2.3+](http://www.ruby-lang.org/en/downloads/), [PostgreSQL 9.3+](http://www.postgresql.org/download/), [Redis 2.6+](http://redis.io/download). If you're having trouble, please see our [**TROUBLESHOOTING GUIDE**](docs/TROUBLESHOOTING.md) first!
+If you're familiar with how Rails works and are comfortable setting up your own environment, you can also try out the [**Discourse Advanced Developer Guide**](docs/DEVELOPER-ADVANCED.md), which is aimed primarily at Ubuntu and macOS environments.
+
+Before you get started, ensure you have the following minimum versions: [Ruby 2.5+](https://www.ruby-lang.org/en/downloads/), [PostgreSQL 10+](https://www.postgresql.org/download/), [Redis 2.6+](https://redis.io/download). If you're having trouble, please see our [**TROUBLESHOOTING GUIDE**](docs/TROUBLESHOOTING.md) first!
 
 ## Setting up Discourse
 
@@ -38,37 +46,36 @@ If you're looking for business class hosting, see [discourse.org/buy](https://ww
 
 Discourse is built for the *next* 10 years of the Internet, so our requirements are high:
 
-| Browsers | Tablets |  Smartphones |
-| -------- | ------- | ----------- |
-| Safari 6.1+| iPad 2+ |  iOS 7+ |
-| Google Chrome 23+ |  Android 4.3+ | Android 4.3+ |
-| Internet Explorer 11+ | Windows 8 | Windows Phone 8 |
-| Firefox 16+ | |
+| Browsers              | Tablets      | Phones       |
+| --------------------- | ------------ | ------------ |
+| Safari 10+           | iPad 4+      | iOS 10+       |
+| Google Chrome 57+     | Android 4.4+ | Android 4.4+ |
+| Internet Explorer 11+ |              |              |
+| Firefox 52+           |              |              |
 
 ## Built With
 
 - [Ruby on Rails](https://github.com/rails/rails) &mdash; Our back end API is a Rails app. It responds to requests RESTfully in JSON.
 - [Ember.js](https://github.com/emberjs/ember.js) &mdash; Our front end is an Ember.js app that communicates with the Rails API.
-- [PostgreSQL](http://www.postgresql.org/) &mdash; Our main data store is in Postgres.
-- [Redis](http://redis.io/) &mdash; We use Redis as a cache and for transient data.
+- [PostgreSQL](https://www.postgresql.org/) &mdash; Our main data store is in Postgres.
+- [Redis](https://redis.io/) &mdash; We use Redis as a cache and for transient data.
 
 Plus *lots* of Ruby Gems, a complete list of which is at [/master/Gemfile](https://github.com/discourse/discourse/blob/master/Gemfile).
 
 ## Contributing
 
 [![Build Status](https://api.travis-ci.org/discourse/discourse.svg?branch=master)](https://travis-ci.org/discourse/discourse)
-[![Code Climate](https://codeclimate.com/github/discourse/discourse.svg)](https://codeclimate.com/github/discourse/discourse)
 
 Discourse is **100% free** and **open source**. We encourage and support an active, healthy community that
 accepts contributions from the public &ndash; including you!
 
 Before contributing to Discourse:
 
-1. Please read the complete mission statements on [**discourse.org**](http://www.discourse.org). Yes we actually believe this stuff; you should too.
-2. Read and sign the [**Electronic Discourse Forums Contribution License Agreement**](http://discourse.org/cla).
+1. Please read the complete mission statements on [**discourse.org**](https://www.discourse.org). Yes we actually believe this stuff; you should too.
+2. Read and sign the [**Electronic Discourse Forums Contribution License Agreement**](https://www.discourse.org/cla).
 3. Dig into [**CONTRIBUTING.MD**](CONTRIBUTING.md), which covers submitting bugs, requesting new features, preparing your code for a pull request, etc.
 4. Always strive to collaborate [with mutual respect](https://github.com/discourse/discourse/blob/master/docs/code-of-conduct.md).
-5. Not sure what to work on? [**We've got some ideas.**](http://meta.discourse.org/t/so-you-want-to-help-out-with-discourse/3823)
+5. Not sure what to work on? [**We've got some ideas.**](https://meta.discourse.org/t/so-you-want-to-help-out-with-discourse/3823)
 
 
 We look forward to seeing your pull requests!
@@ -79,18 +86,18 @@ We take security very seriously at Discourse; all our code is 100% open source a
 
 ## The Discourse Team
 
-The original Discourse code contributors can be found in [**AUTHORS.MD**](docs/AUTHORS.md). For a complete list of the many individuals that contributed to the design and implementation of Discourse, please refer to [the official Discourse blog](http://blog.discourse.org/2013/02/the-discourse-team/) and [GitHub's list of contributors](https://github.com/discourse/discourse/contributors).
+The original Discourse code contributors can be found in [**AUTHORS.MD**](docs/AUTHORS.md). For a complete list of the many individuals that contributed to the design and implementation of Discourse, please refer to [the official Discourse blog](https://blog.discourse.org/2013/02/the-discourse-team/) and [GitHub's list of contributors](https://github.com/discourse/discourse/contributors).
 
 
 ## Copyright / License
 
-Copyright 2014 - 2017 Civilized Discourse Construction Kit, Inc.
+Copyright 2014 - 2019 Civilized Discourse Construction Kit, Inc.
 
 Licensed under the GNU General Public License Version 2.0 (or later);
 you may not use this work except in compliance with the License.
 You may obtain a copy of the License in the LICENSE file, or at:
 
-   http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+   https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -102,4 +109,4 @@ Discourse logo and “Discourse Forum” ®, Civilized Discourse Construction Ki
 
 ## Dedication
 
-Discourse is built with [love, Internet style.](http://www.youtube.com/watch?v=Xe1TZaElTAs)
+Discourse is built with [love, Internet style.](https://www.youtube.com/watch?v=Xe1TZaElTAs)

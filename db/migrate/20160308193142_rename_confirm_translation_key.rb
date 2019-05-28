@@ -1,4 +1,6 @@
-class RenameConfirmTranslationKey < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class RenameConfirmTranslationKey < ActiveRecord::Migration[4.2]
   def change
     execute "UPDATE translation_overrides SET translation_key = 'user_notifications.confirm_new_email.subject_template'
                WHERE translation_key = 'user_notifications.authorize_email.subject_template'"

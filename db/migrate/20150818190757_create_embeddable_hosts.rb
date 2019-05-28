@@ -1,12 +1,14 @@
-class CreateEmbeddableHosts < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CreateEmbeddableHosts < ActiveRecord::Migration[4.2]
   def change
     create_table :embeddable_hosts, force: true do |t|
       t.string :host, null: false
       t.integer :category_id, null: false
-      t.timestamps
+      t.timestamps null: false
     end
 
-    category_id = 0;
+    category_id = 0
     category_row = execute("SELECT c.id FROM categories AS c
                         INNER JOIN site_settings AS s ON s.value = c.name
                         WHERE s.name = 'embed_category'")

@@ -26,46 +26,70 @@
   <br/>
 
   <% if params[:page].to_i == 0 && @subcategories.present? %>
-    <div itemscope itemtype='http://schema.org/ItemList'>
-      <% @subcategories.each do |subcategory| %>
-        <div itemprop='itemListElement' itemscope itemtype='http://schema.org/ListItem'>
-          <meta itemprop='url' content='<%= subcategory.url %>'>
-          <a href='<%= subcategory.url %>' itemprop='item'>
-            <span itemprop='name'><%= subcategory.name %></span>
-          </a>
-          <% if subcategory.description.present? %>
-            <span itemprop='description'><%= subcategory.description %></span>
-          <% end %>
-        </div>
+    <% @subcategories.each do |subcategory| %>
+      <a href='<%= subcategory.url %>'>
+        <span itemprop='name'><%= subcategory.name %></span>
+      </a>
+      <% if subcategory.description.present? %>
+        <span itemprop='description'><%= subcategory.description_text %></span>
       <% end %>
-    </div>
+    <% end %>
     <br/>
   <% end %>
 <% end %>
 
-<div class='topic-list' itemscope itemtype='http://schema.org/ItemList'>
-  <meta itemprop='itemListOrder' content='http://schema.org/ItemListOrderDescending'>
-  <% @list.topics.each_with_index do |t,i| %>
-    <div itemprop='itemListElement' itemscope itemtype='http://schema.org/ListItem'>
-      <meta itemprop='url' content='<%= t.url %>'>
-      <a href='<%= t.relative_url %>' itemprop='item'>
-        <span itemprop='name'><%= t.title %></span>
-      </a>
-      <span class="page-links"><%= page_links(t) %></span>
-      <% if (!@category || @category.has_children?) && t.category %>
-        <span class='category'>[<a href='<%= t.category.url %>'><%= t.category.name %></a>]</span>
+<div itemscope itemtype='http://schema.org/ItemList'>
+  <table class='topic-list'>
+
+    <thead>
+      <tr>
+        <th><%= t 'js.topic.title' %></th>
+        <th><%= t 'js.replies' %></th>
+        <th><%= t 'js.activity' %></th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <meta itemprop='itemListOrder' content='http://schema.org/ItemListOrderDescending'>
+      <% @list.topics.each_with_index do |t,i| %>
+        <tr>
+          <td itemprop='itemListElement' itemscope itemtype='http://schema.org/ListItem'>
+            <meta itemprop='position' content='<%= i %>'>
+            <meta itemprop='url' content='<%= t.url %>'>
+            <meta itemprop='name' content='<%= t.title %>'>
+            <a href='<%= t.url %>' class='title raw-link raw-topic-link'>
+              <span><%= t.title %></span>
+            </a>
+            <% if (!@category || @category.has_children?) && t.category %>
+              <div>
+                <a href='<%= t.category.url %>'><span class='category-name'><%= t.category.name %></span></a>
+              </div>
+            <% end %>
+            <% if t.pinned_until && (t.pinned_until > Time.zone.now) && (t.pinned_globally || @list.category) && t.excerpt %>
+              <p class='excerpt'>
+                <%= t.excerpt.html_safe %>
+              </p>
+            <% end %>
+          </td>
+          <td>
+            <span class='posts' title='<%= t 'posts' %>'><%= t.posts_count %></span>
+          </td>
+          <td>
+            <%= I18n.l(t.last_posted_at || t.created_at, format: :date_only) %>
+          </td>
+        </tr>
       <% end %>
-      <span class='posts' title='<%= t 'posts' %>'>(<%= t.posts_count %>)</span>
-    </div>
-  <% end %>
+    </tbody>
+
+  </table>
 </div>
 
 <% if @list.topics.length > 0 && @list.more_topics_url %>
   <div role='navigation' itemscope itemtype='http://schema.org/SiteNavigationElement'>
     <% if params[:page].to_i > 0 %>
-      <span itemprop='url'><a href='<%= @list.prev_topics_url %>' rel='prev' itemprop='name'><%= t 'prev_page' %></a> &nbsp;</span>
+      <span itemprop='name'><a href='<%= @list.prev_topics_url %>' rel='prev' itemprop='url'><%= t 'prev_page' %></a> &nbsp;</span>
     <% end %>
-    <span itemprop='url'><b><a href='<%= @list.more_topics_url %>' rel='next' itemprop='name'><%= t 'next_page' %></a></b></span>
+    <span itemprop='name'><b><a href='<%= @list.more_topics_url %>' rel='next' itemprop='url'><%= t 'next_page' %></a></b></span>
   </div>
 
   <% content_for :head do %>
@@ -88,7 +112,11 @@
 <% if @category %>
   <% content_for :head do %>
     <%= auto_discovery_link_tag(:rss, { action: :category_feed }, title: t('rss_topics_in_category', category: @category.name)) %>
-    <%= raw crawlable_meta_data(title: @category.name, description: @category.description) %>
+    <%= raw crawlable_meta_data(title: @category.name, description: @category.description, image: @category.uploaded_logo&.url.presence) %>
+  <% end %>
+<% elsif @tag_id %>
+  <% content_for :head do %>
+    <%= raw crawlable_meta_data(title: @title, description: @description_meta) %>
   <% end %>
 <% else %>
   <% content_for :head do %>
@@ -99,7 +127,7 @@
 <% if @title %>
   <% content_for :title do %><%= @title %><% end %>
 <% elsif @category %>
-  <% content_for :title do %><%= @category.name %><% end %>
-<% elsif params[:page] %>
-  <% content_for :title do %><%=t 'page_num', num: params[:page].to_i + 1 %><% end %>
+  <% content_for :title do %><%= @category.name %> - <%= SiteSetting.title %><% end %>
+<% elsif params[:page].to_i > 1 %>
+  <% content_for :title do %><%=t 'page_num', num: params[:page].to_i + 1 %> - <%= SiteSetting.title %><% end %>
 <% end %>

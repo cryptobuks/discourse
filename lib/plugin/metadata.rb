@@ -1,31 +1,76 @@
+# frozen_string_literal: true
+
 # loaded really early
 module Plugin; end
 
 class Plugin::Metadata
 
-  OFFICIAL_PLUGINS = Set.new([
+  OFFICIAL_PLUGINS ||= Set.new([
+    # TODO: Remove this after everyone upgraded `discourse-canned-replies`
+    # to the renamed version.
+    "Canned Replies",
     "customer-flair",
     "discourse-adplugin",
+    "discourse-affiliate",
     "discourse-akismet",
+    "discourse-assign",
+    "discourse-auto-deactivate",
     "discourse-backup-uploads-to-s3",
+    "discourse-bbcode",
+    "discourse-bbcode-color",
     "discourse-cakeday",
-    "Canned Replies",
+    "discourse-canned-replies",
+    "discourse-calendar",
+    "discourse-characters-required",
+    "discourse-chat-integration",
+    "discourse-checklist",
+    "discourse-code-review",
+    "discourse-crowd",
     "discourse-data-explorer",
     "discourse-details",
+    "discourse-footnote",
+    "discourse-github",
+    "discourse-gradle-issue",
+    "discourse-graphviz",
+    "discourse-invite-tokens",
+    "discourse-local-dates",
+    "discourse-logster-rate-limit-checker",
+    "discourse-logster-transporter",
+    "discourse-math",
+    "discourse-moderator-attention",
+    "discourse-narrative-bot",
     "discourse-nginx-performance-report",
-    "discourse-push-notifications",
-    "discourse-slack-official",
-    "discourse-solved",
-    "Spoiler Alert!",
-    "staff-notes",
-    "GitHub badges",
-    "hosted-site",
-    "lazyYT",
-    "logster-rate-limit-checker",
-    "poll",
+    "discourse-no-bump",
+    "discourse-oauth2-basic",
+    "discourse-patreon",
+    "discourse-perspective",
+    "discourse-plugin-discord-auth",
     "discourse-plugin-linkedin-auth",
     "discourse-plugin-office365-auth",
-    "discourse-oauth2-basic"
+    "discourse-steam-login",
+    "discourse-login-with-amazon",
+    "discourse-policy",
+    "discourse-presence",
+    "discourse-prometheus",
+    "discourse-prometheus-alert-receiver",
+    "discourse-push-notifications",
+    "discourse-saved-searches",
+    "discourse-signatures",
+    "discourse-sitemap",
+    "discourse-solved",
+    "discourse-spoiler-alert",
+    "discourse-staff-notes",
+    "discourse-styleguide",
+    "discourse-tooltips",
+    "discourse-translator",
+    "discourse-user-card-badges",
+    "discourse-voting",
+    "discourse-yearly-review",
+    "discourse-openid-connect",
+    "discourse-yearly-review",
+    "docker_manager",
+    "lazyYT",
+    "poll"
   ])
 
   FIELDS ||= [:name, :about, :version, :authors, :url, :required_version]
@@ -54,7 +99,7 @@ class Plugin::Metadata
       attribute = attribute.strip.gsub(/ /, '_').to_sym
 
       if FIELDS.include?(attribute)
-        self.send("#{attribute}=", description.strip)
+        self.public_send("#{attribute}=", description.strip)
       end
     end
 

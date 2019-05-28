@@ -1,4 +1,5 @@
 # encoding: utf-8
+# frozen_string_literal: true
 
 require 'rails_helper'
 require_dependency 'post_creator'
@@ -68,21 +69,19 @@ describe TagUser do
   end
 
   context "integration" do
-    let(:user) { Fabricate(:user) }
-    let(:watched_tag) { Fabricate(:tag) }
+    fab!(:user) { Fabricate(:user) }
+    fab!(:watched_tag) { Fabricate(:tag) }
     let(:muted_tag)   { Fabricate(:tag) }
-    let(:tracked_tag) { Fabricate(:tag) }
+    fab!(:tracked_tag) { Fabricate(:tag) }
 
     context "with some tag notification settings" do
+      before do
+        Jobs.run_immediately!
+      end
 
       let :watched_post do
         TagUser.create!(user: user, tag: watched_tag, notification_level: TagUser.notification_levels[:watching])
         create_post(tags: [watched_tag.name])
-      end
-
-      let :muted_post do
-        TagUser.create!(user: user, tag: muted_tag,   notification_level: TagUser.notification_levels[:muted])
-        create_post(tags: [muted_tag.name])
       end
 
       let :tracked_post do
@@ -141,11 +140,9 @@ describe TagUser do
         TopicUser.change(user.id, post.topic_id, total_msecs_viewed: 1)
         expect(TopicUser.get(post.topic, user).notification_level).to eq TopicUser.notification_levels[:watching]
 
-
         DiscourseTagging.tag_topic_by_names(post.topic, Guardian.new(user), [watched_tag.name])
         post.topic.save!
         expect(TopicUser.get(post.topic, user).notification_level).to eq TopicUser.notification_levels[:watching]
-
 
         DiscourseTagging.tag_topic_by_names(post.topic, Guardian.new(user), [])
         post.topic.save!
@@ -158,7 +155,7 @@ describe TagUser do
         staff = Fabricate(:admin)
         topic = create_post.topic
 
-        SiteSetting.staff_tags = "foo"
+        create_staff_tags(['foo'])
 
         result = DiscourseTagging.tag_topic_by_names(topic, Guardian.new(user), ["foo"])
         expect(result).to eq(false)
@@ -167,7 +164,7 @@ describe TagUser do
         result = DiscourseTagging.tag_topic_by_names(topic, Guardian.new(staff), ["foo"])
         expect(result).to eq(true)
 
-        topic.errors[:base].clear
+        topic.errors.clear
 
         result = DiscourseTagging.tag_topic_by_names(topic, Guardian.new(user), [])
         expect(result).to eq(false)

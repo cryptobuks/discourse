@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 class ReplyByEmailEnabledValidator
 
-  def initialize(opts={})
+  def initialize(opts = {})
     @opts = opts
   end
 

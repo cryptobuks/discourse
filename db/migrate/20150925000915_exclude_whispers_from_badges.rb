@@ -1,4 +1,6 @@
-class ExcludeWhispersFromBadges < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class ExcludeWhispersFromBadges < ActiveRecord::Migration[4.2]
   def up
     execute "DROP VIEW badge_posts"
 

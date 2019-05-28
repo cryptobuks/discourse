@@ -1,4 +1,6 @@
-class IndexUserBadges < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class IndexUserBadges < ActiveRecord::Migration[4.2]
   def change
     execute 'DELETE FROM user_badges USING user_badges ub2
              WHERE  user_badges.badge_id = ub2.badge_id AND

@@ -1,4 +1,4 @@
-{{#load-more selector=".email-list tr" action="loadMore"}}
+{{#load-more selector=".email-list tr" action=(action "loadMore")}}
   <table class='table email-list'>
     <thead>
       <tr>
@@ -30,7 +30,7 @@
           {{/if}}
         </td>
         <td>
-          {{#if l.bounced}}{{fa-icon "repeat" title="admin.email.bounced"}}{{/if}}
+          {{#if l.bounced}}{{d-icon "redo" title="admin.email.bounced"}}{{/if}}
           <a href='mailto:{{unbound l.to_address}}'>{{l.to_address}}</a>
         </td>
         <td>{{l.email_type}}</td>
@@ -44,7 +44,9 @@
         </td>
       </tr>
     {{else}}
-      <tr><td colspan="5">{{i18n 'admin.email.logs.none'}}</td></tr>
+      {{#unless loading}}
+        <tr><td colspan="5">{{i18n 'admin.email.logs.none'}}</td></tr>
+      {{/unless}}
     {{/each}}
 
   </table>

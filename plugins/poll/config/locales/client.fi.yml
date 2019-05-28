@@ -16,17 +16,22 @@ fi:
         other: "ääntä"
       average_rating: "Keskiarvo: <strong>%{average}</strong>"
       public:
-        title: "Äänet ovat julkisia."
+        title: "Äänet ovat <strong>julkisia</strong>."
+      results:
+        vote:
+          title: "Näet äänet, kun <strong>olet äänestänyt</strong>."
+        closed:
+          title: "Tulokset näytetään äänestyksen <strong>sulkeuduttua</strong>."
       multiple:
         help:
           at_least_min_options:
-            one: "Valitse vähintään <strong>1</strong> vaihtoehto"
+            one: "Valitse vähintään <strong>%{count}</strong> vaihtoehto"
             other: "Valotse vähintään <strong>%{count}</strong> vaihtoehtoa"
           up_to_max_options:
-            one: "Valitse enintään <strong>1</strong> vaihtoehto"
+            one: "Valitse enintään <strong>%{count}</strong> vaihtoehto"
             other: "Valitse enintään <strong>%{count}</strong> vaihtoehtoa"
           x_options:
-            one: "Valitse  <strong>1</strong> vaihtoehto"
+            one: "Valitse  <strong>%{count}</strong> vaihtoehto"
             other: "Valitse <strong>%{count}</strong> vaihtoehtoa"
           between_min_and_max_options: "Valitse <strong>%{min}</strong>-<strong>%{max}</strong> vaihtoehtoa"
       cast-votes:
@@ -54,11 +59,18 @@ fi:
         insert: Lisää äänestys
         help:
           options_count: Valitse vähintään 2 vaihtoehtoa
+          invalid_values: Vähimmäisarvon täytyy olla enimmäisarvoa pienempi.
+          min_step_value: Askelvälin on oltava vähintään 1
         poll_type:
           label: Tyyppi
           regular: Valitaan yksi
           multiple: Valitaan useita
           number: Numeroarviointi
+        poll_result:
+          label: Tulokset
+          always: Näkyvät aina
+          vote: Kun on äänestänyt
+          closed: Kun äänestys suljettu
         poll_config:
           max: Enint.
           min: Väh.
@@ -67,3 +79,5 @@ fi:
           label: Näytä äänestäneet
         poll_options:
           label: Syötä yksi äänestysvaihtoehto riviä kohden
+        automatic_close:
+          label: Sulje äänestys ajastetusti

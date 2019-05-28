@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class HomePageConstraint
   def initialize(filter)
     @filter = filter
@@ -7,9 +9,9 @@ class HomePageConstraint
     return @filter == 'finish_installation' if SiteSetting.has_login_hint?
 
     provider = Discourse.current_user_provider.new(request.env)
-    homepage = provider.current_user ? SiteSetting.homepage : SiteSetting.anonymous_homepage
+    homepage = provider&.current_user&.user_option&.homepage || SiteSetting.anonymous_homepage
     homepage == @filter
-  rescue Discourse::InvalidAccess
+  rescue Discourse::InvalidAccess, Discourse::ReadOnly
     false
   end
 end

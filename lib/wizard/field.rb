@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Wizard
 
   class Choice
@@ -27,7 +29,7 @@ class Wizard
       @choices = []
     end
 
-    def add_choice(id, opts=nil)
+    def add_choice(id, opts = nil)
       choice = Choice.new(id, opts || {})
       choice.field = self
 

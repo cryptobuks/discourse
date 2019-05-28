@@ -1,4 +1,4 @@
-Congratulations, you are now the proud owner of your very own [Civilized Discourse Construction Kit](http://www.discourse.org). :hatching_chick:
+Congratulations, you are now the proud owner of your very own [Civilized Discourse Construction Kit](https://www.discourse.org). :hatching_chick:
 
 ### Getting Started
 
@@ -73,7 +73,7 @@ To make (or remove) a pin or a banner, use the admin wrench at the top right or 
 
 ### New User Sandbox and the Trust System
 
-If your discussion area is be open to the public, new visitors will arrive that are initially strangers to the community. Discourse has a [trust system](https://meta.discourse.org/t/what-do-user-trust-levels-do/4924/2) where users can, over time, earn the trust of the community and gain abilities to assist in governing their community.
+If your discussion area is be open to the public, new visitors will arrive that are initially strangers to the community. Discourse has a [trust system](https://blog.discourse.org/2018/06/understanding-discourse-trust-levels/) where users can, over time, earn the trust of the community and gain abilities to assist in governing their community.
 
 Discourse is designed to offer safe defaults for public communities, even with no active moderation.
 
@@ -83,12 +83,12 @@ All new users start out in a sandbox with restrictions for everyone's safety. **
 
 - post more than 2 hyperlinks
 - post any images or file attachments
-- send private messages
+- send personal messages
 - flag posts or topics
 - have actual links in the "about me" field of their profile
 - @name mention more than 2 users in a post
 
-Every action a user can take is rate limited for safety, and especially so for new users. But don't worry, new users can [transition to trust level 1](https://meta.discourse.org/t/what-do-user-trust-levels-do/4924/2) in about 10 minutes of reading.
+Every action a user can take is rate limited for safety, and especially so for new users. But don't worry, new users can [transition to trust level 1](https://blog.discourse.org/2018/06/understanding-discourse-trust-levels/) in about 10 minutes of reading.
 
 These defaults are safe, but note that while in "bootstrap mode" after you set up your site, all new users will be granted trust level 1 until you reach 50 users.
 
@@ -101,7 +101,7 @@ Be patient; building communities is hard. Before launching, be sure to:
 3. Commit to visiting and participating regularly.
 4. Link your community everywhere and promote it so people can find it.
 
-There's more advice at [Building a Discourse Community](http://blog.discourse.org/2014/08/building-a-discourse-community/).
+There's more advice at [Building a Discourse Community](https://blog.discourse.org/2014/08/building-a-discourse-community/).
 
 ### Sending Invitations
 
@@ -131,11 +131,11 @@ The invite area on your profile page also includes advanced Staff methods of [se
    - [Import old content from vBulletin, PHPbb, Vanilla, Drupal, BBPress, etc](https://github.com/discourse/discourse/tree/master/script/import_scripts)
    - A firewall on your server? [Configure firewall](https://meta.discourse.org/t/configure-a-firewall-for-discourse/20584).
    - A user friendly [offline page when rebuilding or upgrading?](https://meta.discourse.org/t/adding-an-offline-page-when-rebuilding/45238)
-   - Embed Discourse [in your WordPress install](https://github.com/discourse/wp-discourse), or [on your static HTML site](http://eviltrout.com/2014/01/22/embedding-discourse.html)
+   - Embed Discourse [in your WordPress install](https://github.com/discourse/wp-discourse), or [on your static HTML site](https://meta.discourse.org/t/embedding-discourse-comments-via-javascript/31963)
 
 ### Need more Help?
 
-For more assistance on configuring and running your Discourse forum, see [meta.discourse.org](http://meta.discourse.org).
+For more assistance on configuring and running your Discourse forum, see [meta.discourse.org](https://meta.discourse.org).
 
 ----
 

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 Discourse::Application.configure do
 
   # Settings specified here will take precedence over those in config/application.rb
@@ -29,7 +31,6 @@ Discourse::Application.configure do
   config.active_record.migration_error = :page_load
   config.watchable_dirs['lib'] = [:rb]
 
-  config.sass.debug_info = false
   config.handlebars.precompile = false
 
   # we recommend you use mailcatcher https://github.com/sj26/mailcatcher
@@ -51,6 +52,12 @@ Discourse::Application.configure do
 
   if emails = GlobalSetting.developer_emails
     config.developer_emails = emails.split(",").map(&:downcase).map(&:strip)
+  end
+
+  if defined?(Rails::Server) || defined?(Puma) || defined?(Unicorn)
+    require 'stylesheet/watcher'
+    STDERR.puts "Starting CSS change watcher"
+    @watcher = Stylesheet::Watcher.watch
   end
 
   config.after_initialize do

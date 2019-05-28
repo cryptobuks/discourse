@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ImportScripts::PhpBB3
   class Constants
     ACTIVE_USER = 0
@@ -18,6 +20,10 @@ module ImportScripts::PhpBB3
     AVATAR_TYPE_UPLOADED = 1
     AVATAR_TYPE_REMOTE = 2
     AVATAR_TYPE_GALLERY = 3
+
+    AVATAR_TYPE_STRING_UPLOADED = 'avatar.driver.upload'
+    AVATAR_TYPE_STRING_REMOTE = 'avatar.driver.remote'
+    AVATAR_TYPE_STRING_GALLERY = 'avatar.driver.local'
 
     FORUM_TYPE_CATEGORY = 0
     FORUM_TYPE_POST = 1

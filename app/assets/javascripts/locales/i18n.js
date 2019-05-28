@@ -15,6 +15,7 @@ I18n.pluralizationRules = {
 
 // Set current locale to null
 I18n.locale = null;
+I18n.fallbackLocale = null;
 
 // Set the placeholder format. Accepts `{{placeholder}}` and `%{placeholder}`.
 I18n.PLACEHOLDER = /(?:\{\{|%\{)(.*?)(?:\}\}?)/gm;
@@ -27,29 +28,10 @@ I18n.isValidNode = function(obj, node, undefined) {
   return obj[node] !== null && obj[node] !== undefined;
 };
 
-function checkExtras(origScope, sep, extras) {
-  if (!extras || extras.length === 0) { return; }
-
-  for (var i = 0; i < extras.length; i++) {
-    var messages = extras[i];
-    scope = origScope.split(sep);
-
-    if (scope[0] === 'js') { scope.shift(); }
-
-    while (messages && scope.length > 0) {
-      currentScope = scope.shift();
-      messages = messages[currentScope];
-    }
-
-    if (messages !== undefined) { return messages; }
-  }
-}
-
 I18n.lookup = function(scope, options) {
   options = options || {};
 
-  var lookupInitialScope = scope,
-      translations = this.prepareOptions(I18n.translations),
+  var translations = this.prepareOptions(I18n.translations),
       locale = options.locale || I18n.currentLocale(),
       messages = translations[locale] || {},
       currentScope;
@@ -64,17 +46,26 @@ I18n.lookup = function(scope, options) {
     scope = options.scope.toString() + this.SEPARATOR + scope;
   }
 
-  var origScope = "" + scope;
+  var originalScope = scope;
+  scope = scope.split(this.SEPARATOR);
 
-  scope = origScope.split(this.SEPARATOR);
+  if (scope.length > 0 && scope[0] !== "js") {
+    scope.unshift("js");
+  }
 
   while (messages && scope.length > 0) {
     currentScope = scope.shift();
     messages = messages[currentScope];
   }
 
-  if (messages === undefined) {
-    messages = checkExtras(origScope, this.SEPARATOR, this.extras);
+  if (messages === undefined && this.extras && this.extras[locale]) {
+    messages = this.extras[locale];
+    scope = originalScope.split(this.SEPARATOR);
+
+    while (messages && scope.length > 0) {
+      currentScope = scope.shift();
+      messages = messages[currentScope];
+    }
   }
 
   if (messages === undefined) {
@@ -144,6 +135,10 @@ I18n.translate = function(scope, options) {
   var translation = this.lookup(scope, options);
 
   if (!this.noFallbacks) {
+    if (!translation && this.fallbackLocale) {
+      options.locale = this.fallbackLocale;
+      translation = this.lookup(scope, options);
+    }
     if (!translation && this.currentLocale() !== this.defaultLocale) {
       options.locale = this.defaultLocale;
       translation = this.lookup(scope, options);
@@ -286,6 +281,34 @@ I18n.missingTranslation = function(scope, key) {
 
 I18n.currentLocale = function() {
   return I18n.locale || I18n.defaultLocale;
+};
+
+I18n.enableVerboseLocalization = function() {
+  var counter = 0;
+  var keys = {};
+  var t = I18n.t;
+
+  I18n.noFallbacks = true;
+
+  I18n.t = I18n.translate = function(scope, value){
+    var current = keys[scope];
+    if (!current) {
+      current = keys[scope] = ++counter;
+      var message = "Translation #" + current + ": " + scope;
+      if (!_.isEmpty(value)) {
+        message += ", parameters: " + JSON.stringify(value);
+      }
+      Ember.Logger.info(message);
+    }
+    return t.apply(I18n, [scope, value]) + " (#" + current + ")";
+  };
+};
+
+I18n.enableVerboseLocalizationSession = function() {
+  sessionStorage.setItem("verbose_localization", "true");
+  I18n.enableVerboseLocalization();
+
+  return 'Verbose localization is enabled. Close the browser tab to turn it off. Reload the page to see the translation keys.';
 };
 
 // shortcuts

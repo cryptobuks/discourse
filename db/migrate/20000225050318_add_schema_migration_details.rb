@@ -1,4 +1,6 @@
-class AddSchemaMigrationDetails < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class AddSchemaMigrationDetails < ActiveRecord::Migration[4.2]
   def up
     # schema_migrations table is way too thin, does not give info about
     # duration of migration or the date it happened, this migration together with the

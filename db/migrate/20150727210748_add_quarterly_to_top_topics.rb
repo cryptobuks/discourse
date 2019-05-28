@@ -1,4 +1,6 @@
-class AddQuarterlyToTopTopics < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class AddQuarterlyToTopTopics < ActiveRecord::Migration[4.2]
   def change
     add_column :top_topics, :quarterly_posts_count,    :integer, default: 0, null: false
     add_column :top_topics, :quarterly_views_count,    :integer, default: 0, null: false

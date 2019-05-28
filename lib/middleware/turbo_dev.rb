@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 module Middleware
 
   # Cheat and bypass Rails in development mode if the client attempts to download a static asset
@@ -12,7 +13,7 @@ module Middleware
   #  config.middleware.insert 0, Middleware::TurboDev
   #
   class TurboDev
-    def initialize(app, settings={})
+    def initialize(app, settings = {})
       @app = app
     end
 
@@ -26,7 +27,7 @@ module Middleware
         etag = etag.gsub "\"", ""
         asset = Rails.application.assets.find_asset(name)
         if asset && asset.digest == etag
-          return [304,{},[]]
+          return [304, {}, []]
         end
       end
 

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'version'
 
@@ -37,4 +39,3 @@ describe Discourse::VERSION do
 
   end
 end
-

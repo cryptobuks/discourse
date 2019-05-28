@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe InviteRedeemer do
@@ -12,12 +14,15 @@ describe InviteRedeemer do
       expect(user.approved).to eq(true)
     end
 
-    it "can set the password too" do
+    it "can set the password and ip_address" do
       password = 's3cure5tpasSw0rD'
-      user = InviteRedeemer.create_user_from_invite(Fabricate(:invite, email: 'walter.white@email.com'), 'walter', 'Walter White', password)
+      ip_address = '192.168.1.1'
+      user = InviteRedeemer.create_user_from_invite(Fabricate(:invite, email: 'walter.white@email.com'), 'walter', 'Walter White', password, nil, ip_address)
       expect(user).to have_password
       expect(user.confirm_password?(password)).to eq(true)
       expect(user.approved).to eq(true)
+      expect(user.ip_address).to eq(ip_address)
+      expect(user.registration_ip_address).to eq(ip_address)
     end
 
     it "raises exception with record and errors" do
@@ -30,13 +35,25 @@ describe InviteRedeemer do
       expect(error).to be_present
       expect(error.record.errors[:password]).to be_present
     end
+
+    it "should unstage user" do
+      staged_user = Fabricate(:staged, email: 'staged@account.com', active: true, username: 'staged1', name: 'Stage Name')
+      user = InviteRedeemer.create_user_from_invite(Fabricate(:invite, email: 'staged@account.com'), 'walter', 'Walter White')
+
+      expect(user.id).to eq(staged_user.id)
+      expect(user.username).to eq('walter')
+      expect(user.name).to eq('Walter White')
+      expect(user.staged).to eq(false)
+      expect(user.email).to eq('staged@account.com')
+      expect(user.approved).to eq(true)
+    end
   end
 
   describe "#redeem" do
-    let(:invite) { Fabricate(:invite) }
+    fab!(:invite) { Fabricate(:invite) }
     let(:name) { 'john snow' }
     let(:username) { 'kingofthenorth' }
-    let(:password) { 'know5nOthiNG'}
+    let(:password) { 'know5nOthiNG' }
     let(:invite_redeemer) { InviteRedeemer.new(invite, username, name) }
 
     it "should redeem the invite if invited by staff" do
@@ -87,11 +104,45 @@ describe InviteRedeemer do
     end
 
     it "can set password" do
-      inviter = invite.invited_by
       user = InviteRedeemer.new(invite, username, name, password).redeem
       expect(user).to have_password
       expect(user.confirm_password?(password)).to eq(true)
       expect(user.approved).to eq(true)
+    end
+
+    it "can set custom fields" do
+      required_field = Fabricate(:user_field)
+      optional_field = Fabricate(:user_field, required: false)
+      user_fields = {
+        required_field.id.to_s => 'value1',
+        optional_field.id.to_s => 'value2'
+      }
+      user = InviteRedeemer.new(invite, username, name, password, user_fields).redeem
+
+      expect(user).to be_present
+      expect(user.custom_fields["user_field_#{required_field.id}"]).to eq('value1')
+      expect(user.custom_fields["user_field_#{optional_field.id}"]).to eq('value2')
+    end
+
+    it "adds user to group" do
+      group = Fabricate(:group, grant_trust_level: 2)
+      InvitedGroup.create(group_id: group.id, invite_id: invite.id)
+      user = InviteRedeemer.new(invite, username, name, password).redeem
+
+      expect(user.group_users.count).to eq(4)
+      expect(user.trust_level).to eq(2)
+    end
+
+    it "only allows one user to be created per invite" do
+      user = invite_redeemer.redeem
+      invite.reload
+
+      user.email = "john@example.com"
+      user.save!
+
+      another_invite_redeemer = InviteRedeemer.new(invite, username, name)
+      another_user = another_invite_redeemer.redeem
+      expect(another_user).to eq(nil)
     end
   end
 end

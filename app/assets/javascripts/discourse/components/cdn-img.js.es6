@@ -1,8 +1,17 @@
-export default Ember.Component.extend({
-  tagName: 'img',
-  attributeBindings: ['cdnSrc:src'],
+import computed from "ember-addons/ember-computed-decorators";
 
-  cdnSrc: function() {
-    return Discourse.getURLWithCDN(this.get('src'));
-  }.property('src')
+export default Ember.Component.extend({
+  tagName: "",
+
+  @computed("src")
+  cdnSrc(src) {
+    return Discourse.getURLWithCDN(src);
+  },
+
+  @computed("width", "height")
+  style(width, height) {
+    if (width && height) {
+      return Ember.String.htmlSafe(`--aspect-ratio: ${width / height};`);
+    }
+  }
 });

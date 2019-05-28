@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class NotificationSerializer < ApplicationSerializer
 
   attributes :id,
@@ -6,6 +8,7 @@ class NotificationSerializer < ApplicationSerializer
              :created_at,
              :post_number,
              :topic_id,
+             :fancy_title,
              :slug,
              :data,
              :is_warning
@@ -16,6 +19,14 @@ class NotificationSerializer < ApplicationSerializer
 
   def is_warning
     object.topic.present? && object.topic.subtype == TopicSubtype.moderator_warning
+  end
+
+  def include_fancy_title?
+    object.topic&.fancy_title
+  end
+
+  def fancy_title
+    object.topic.fancy_title
   end
 
   def include_is_warning?

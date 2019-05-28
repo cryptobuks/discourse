@@ -1,4 +1,6 @@
-class CorrectMailingListModeFrequency < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CorrectMailingListModeFrequency < ActiveRecord::Migration[4.2]
   def up
     # historically mailing list mode was for every message
     # keep working the same way for all old users

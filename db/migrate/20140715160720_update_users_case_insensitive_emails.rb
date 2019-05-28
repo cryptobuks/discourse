@@ -1,4 +1,6 @@
-class UpdateUsersCaseInsensitiveEmails < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class UpdateUsersCaseInsensitiveEmails < ActiveRecord::Migration[4.2]
   def up
     execute "DROP INDEX index_users_on_email"
 

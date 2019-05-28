@@ -1,36 +1,38 @@
 /*global document, sinon, QUnit, Logster */
 
 //= require env
-//= require probes
 //= require jquery.debug
 //= require jquery.ui.widget
 //= require handlebars
 //= require ember.debug
 //= require ember-template-compiler
 //= require message-bus
+//= require qunit/qunit/qunit
 //= require ember-qunit
 //= require fake_xml_http_request
-//= require route-recognizer
-//= require pretender
+//= require route-recognizer/dist/route-recognizer
+//= require pretender/pretender
 //= require discourse-loader
 //= require preload-store
 
 //= require locales/i18n
-//= require locales/en
+//= require locales/en_US
 
 // Stuff we need to load first
 //= require vendor
 //= require ember-shim
 //= require pretty-text-bundle
+//= require markdown-it-bundle
 //= require application
 //= require plugin
-//= require htmlparser.js
 //= require admin
 
-//= require sinon-1.7.1
-//= require sinon-qunit-1.0.0
+//= require sinon/pkg/sinon
 
 //= require helpers/assertions
+//= require helpers/textarea-selection
+//= require helpers/select-kit-helper
+//= require helpers/d-editor-helper
 
 //= require helpers/qunit-helpers
 //= require_tree ./fixtures
@@ -39,7 +41,15 @@
 //= require plugin_tests
 //= require_self
 //
-//= require jquery.magnific-popup-min.js
+//= require jquery.magnific-popup.min.js
+
+sinon.config = {
+  injectIntoThis: false,
+  injectInto: null,
+  properties: ["spy", "stub", "mock", "clock", "sandbox"],
+  useFakeTimers: true,
+  useFakeServer: false
+};
 
 window.inTestEnv = true;
 
@@ -48,10 +58,16 @@ window.MessageBus.stop();
 
 // Trick JSHint into allow document.write
 var d = document;
-d.write('<div id="ember-testing-container"><div id="ember-testing"></div></div>');
-d.write('<style>#ember-testing-container { position: absolute; background: white; bottom: 0; right: 0; width: 640px; height: 384px; overflow: auto; z-index: 9999; border: 1px solid #ccc; } #ember-testing { zoom: 50%; }</style>');
+d.write(
+  '<div id="ember-testing-container"><div id="ember-testing"></div></div>'
+);
+d.write(
+  "<style>#ember-testing-container { position: absolute; background: white; bottom: 0; right: 0; width: 640px; height: 384px; overflow: auto; z-index: 9999; border: 1px solid #ccc; } #ember-testing { zoom: 50%; }</style>"
+);
 
-Discourse.rootElement = '#ember-testing';
+Ember.Test.adapter = window.QUnitAdapter.create();
+
+Discourse.rootElement = "#ember-testing";
 Discourse.setupForTesting();
 Discourse.injectTestHelpers();
 Discourse.start();
@@ -64,53 +80,65 @@ if (window.Logster) {
 }
 
 var origDebounce = Ember.run.debounce,
-    createPretendServer = require('helpers/create-pretender', null, null, false).default,
-    fixtures = require('fixtures/site-fixtures', null, null, false).default,
-    flushMap = require('discourse/models/store', null, null, false).flushMap,
-    ScrollingDOMMethods = require('discourse/mixins/scrolling', null, null, false).ScrollingDOMMethods,
-    _DiscourseURL = require('discourse/lib/url', null, null, false).default,
-    server;
+  pretender = require("helpers/create-pretender", null, null, false),
+  fixtures = require("fixtures/site-fixtures", null, null, false).default,
+  flushMap = require("discourse/models/store", null, null, false).flushMap,
+  ScrollingDOMMethods = require("discourse/mixins/scrolling", null, null, false)
+    .ScrollingDOMMethods,
+  _DiscourseURL = require("discourse/lib/url", null, null, false).default,
+  applyPretender = require("helpers/qunit-helpers", null, null, false)
+    .applyPretender,
+  server;
 
 function dup(obj) {
   return jQuery.extend(true, {}, obj);
 }
 
-function resetSite() {
-  var createStore = require('helpers/create-store').default;
-  var siteAttrs = dup(fixtures['site.json'].site);
+function resetSite(siteSettings, extras) {
+  var createStore = require("helpers/create-store").default;
+  var siteAttrs = $.extend({}, fixtures["site.json"].site, extras || {});
   siteAttrs.store = createStore();
+  siteAttrs.siteSettings = siteSettings;
   Discourse.Site.resetCurrent(Discourse.Site.create(siteAttrs));
 }
 
 QUnit.testStart(function(ctx) {
-  server = createPretendServer();
+  server = pretender.default();
+
+  var helper = {
+    parsePostData: pretender.parsePostData,
+    response: pretender.response,
+    success: pretender.success
+  };
+
+  applyPretender(server, helper);
 
   // Allow our tests to change site settings and have them reset before the next test
   Discourse.SiteSettings = dup(Discourse.SiteSettingsOriginal);
   Discourse.BaseUri = "";
-  Discourse.BaseUrl = "localhost";
+  Discourse.BaseUrl = "http://localhost:3000";
   Discourse.Session.resetCurrent();
   Discourse.User.resetCurrent();
-  resetSite();
+  resetSite(Discourse.SiteSettings);
 
   _DiscourseURL.redirectedTo = null;
   _DiscourseURL.redirectTo = function(url) {
     _DiscourseURL.redirectedTo = url;
   };
 
-  var ps = require('preload-store').default;
+  var ps = require("preload-store").default;
   ps.reset();
 
-  window.sandbox = sinon.sandbox.create();
+  window.sandbox = sinon;
   window.sandbox.stub(ScrollingDOMMethods, "screenNotFull");
   window.sandbox.stub(ScrollingDOMMethods, "bindOnScroll");
   window.sandbox.stub(ScrollingDOMMethods, "unbindOnScroll");
 
   // Unless we ever need to test this, let's leave it off.
-  $.fn.autocomplete = Ember.K;
+  $.fn.autocomplete = function() {};
 
   // Don't debounce in test unless we're testing debouncing
-  if (ctx.module.indexOf('debounce') === -1) {
+  if (ctx.module.indexOf("debounce") === -1) {
     Ember.run.debounce = Ember.run;
   }
 });
@@ -120,7 +148,7 @@ QUnit.testDone(function() {
   window.sandbox.restore();
 
   // Destroy any modals
-  $('.modal-backdrop').remove();
+  $(".modal-backdrop").remove();
   flushMap();
 
   server.shutdown();
@@ -134,11 +162,31 @@ window.asyncTestDiscourse = helpers.asyncTestDiscourse;
 window.controllerFor = helpers.controllerFor;
 window.fixture = helpers.fixture;
 
+function getUrlParameter(name) {
+  name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+  var regex = new RegExp("[\\?&]" + name + "=([^&#]*)");
+  var results = regex.exec(location.search);
+  return results === null
+    ? ""
+    : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
+var skipCore = getUrlParameter("qunit_skip_core") == "1";
+var pluginPath = getUrlParameter("qunit_single_plugin")
+  ? "/" + getUrlParameter("qunit_single_plugin") + "/"
+  : "/plugins/";
+
 Object.keys(requirejs.entries).forEach(function(entry) {
-  if ((/\-test/).test(entry)) {
+  var isTest = /\-test/.test(entry);
+  var regex = new RegExp(pluginPath);
+  var isPlugin = regex.test(entry);
+
+  if (isTest && (!skipCore || isPlugin)) {
     require(entry, null, null, true);
   }
 });
-require('mdtest/mdtest', null, null, true);
-resetSite();
 
+// forces 0 as duration for all jquery animations
+jQuery.fx.off = true;
+
+resetSite();

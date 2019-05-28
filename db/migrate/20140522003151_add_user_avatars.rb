@@ -1,4 +1,6 @@
-class AddUserAvatars < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class AddUserAvatars < ActiveRecord::Migration[4.2]
   def up
     create_table :user_avatars do |t|
       t.integer :user_id, null: false
@@ -6,7 +8,7 @@ class AddUserAvatars < ActiveRecord::Migration
       t.integer :custom_upload_id
       t.integer :gravatar_upload_id
       t.datetime :last_gravatar_download_attempt
-      t.timestamps
+      t.timestamps null: false
     end
 
     add_index :user_avatars, [:user_id]

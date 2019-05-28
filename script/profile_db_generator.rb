@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # can be used to generate a mock db for profiling purposes
 
 # we want our script to generate a consistent output, to do so
@@ -9,7 +11,6 @@ class Array
     self[RNG.rand(size)]
   end
 end
-
 
 # based on https://gist.github.com/zaius/2643079
 def unbundled_require(gem)
@@ -44,28 +45,36 @@ end
 
 def create_admin(seq)
   User.new.tap { |admin|
-    admin.email = "admin@localhost#{seq}"
+    admin.email = "admin@localhost#{seq}.fake"
     admin.username = "admin#{seq}"
-    admin.password = "password"
-    admin.save
+    admin.password = "password12345abc"
+    admin.save!
     admin.grant_admin!
     admin.change_trust_level!(TrustLevel[4])
-    admin.email_tokens.update_all(confirmed: true)
+    admin.activate
   }
 end
 
 require File.expand_path(File.dirname(__FILE__) + "/../config/environment")
 
-SiteSetting.queue_jobs = false
+Jobs.run_immediately!
 
 unless Rails.env == "profile"
   puts "This script should only be used in the profile environment"
   exit
 end
 
-# by default, Discourse has a "system" account
-if User.count > 1
+def ensure_perf_test_topic_has_right_title!
+  t = Topic.find(179)
+  t.title = "I am a topic used for perf tests"
+  t.save! if t.title_changed?
+end
+
+# by default, Discourse has a "system" and `discobot` account
+if User.count > 2
   puts "Only run this script against an empty DB"
+
+  ensure_perf_test_topic_has_right_title!
   exit
 end
 
@@ -112,3 +121,4 @@ end
 Category.update_stats
 Jobs::PeriodicalUpdates.new.execute(nil)
 
+ensure_perf_test_topic_has_right_title!

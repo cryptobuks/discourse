@@ -1,4 +1,6 @@
-class CreateUserProfiles < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CreateUserProfiles < ActiveRecord::Migration[4.2]
   def up
     create_table :user_profiles, id: false do |t|
       t.references :user

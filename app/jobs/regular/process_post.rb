@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'image_sizer'
 require_dependency 'cooked_post_processor'
 
@@ -17,11 +19,11 @@ module Jobs
         cooking_options = args[:cooking_options] || {}
         cooking_options[:topic_id] = post.topic_id
         recooked = post.cook(post.raw, cooking_options.symbolize_keys)
-        post.update_column(:cooked, recooked)
+        post.update_columns(cooked: recooked, baked_at: Time.zone.now, baked_version: Post::BAKED_VERSION)
       end
 
       cp = CookedPostProcessor.new(post, args)
-      cp.post_process(args[:bypass_bump])
+      cp.post_process(bypass_bump: args[:bypass_bump], new_post: args[:new_post])
 
       # If we changed the document, save it
       cooked = cp.html
@@ -35,6 +37,14 @@ module Jobs
           post.update_column(:cooked, cp.html)
           extract_links(post)
           post.publish_change_to_clients! :revised
+        end
+      end
+
+      if !post.user&.staff? && !post.user&.staged?
+        s = post.cooked
+        s << " #{post.topic.title}" if post.post_number == 1
+        if !args[:bypass_bump] && WordWatcher.new(s).should_flag?
+          PostActionCreator.create(Discourse.system_user, post, :inappropriate)
         end
       end
     end

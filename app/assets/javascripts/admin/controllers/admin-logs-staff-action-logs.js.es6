@@ -1,31 +1,43 @@
-import { exportEntity } from 'discourse/lib/export-csv';
-import { outputExportResult } from 'discourse/lib/export-result';
-import StaffActionLog from 'admin/models/staff-action-log';
+import { exportEntity } from "discourse/lib/export-csv";
+import { outputExportResult } from "discourse/lib/export-result";
+import StaffActionLog from "admin/models/staff-action-log";
+import computed from "ember-addons/ember-computed-decorators";
 
 export default Ember.Controller.extend({
   loading: false,
   filters: null,
+  userHistoryActions: [],
 
-  filtersExists: Ember.computed.gt('filterCount', 0),
+  filtersExists: Ember.computed.gt("filterCount", 0),
 
-  actionFilter: function() {
-    var name = this.get('filters.action_name');
+  filterActionIdChanged: function() {
+    const filterActionId = this.filterActionId;
+    if (filterActionId) {
+      this._changeFilters({
+        action_name: filterActionId,
+        action_id: this.userHistoryActions.findBy("id", filterActionId)
+          .action_id
+      });
+    }
+  }.observes("filterActionId"),
+
+  @computed("filters.action_name")
+  actionFilter(name) {
     if (name) {
       return I18n.t("admin.logs.staff_actions.actions." + name);
     } else {
       return null;
     }
-  }.property('filters.action_name'),
+  },
 
-  showInstructions: Ember.computed.gt('model.length', 0),
+  showInstructions: Ember.computed.gt("model.length", 0),
 
-  refresh: function() {
-    var self = this;
-    this.set('loading', true);
+  _refresh() {
+    this.set("loading", true);
 
-    var filters = this.get('filters'),
-        params = {},
-        count = 0;
+    var filters = this.filters,
+      params = {},
+      count = 0;
 
     // Don't send null values
     Object.keys(filters).forEach(function(k) {
@@ -35,23 +47,41 @@ export default Ember.Controller.extend({
         count += 1;
       }
     });
-    this.set('filterCount', count);
+    this.set("filterCount", count);
 
-    StaffActionLog.findAll(params).then(function(result) {
-      self.set('model', result);
-    }).finally(function() {
-      self.set('loading', false);
-    });
+    StaffActionLog.findAll(params)
+      .then(result => {
+        this.set("model", result.staff_action_logs);
+        if (this.userHistoryActions.length === 0) {
+          let actionTypes = result.user_history_actions.map(action => {
+            return {
+              id: action.id,
+              action_id: action.action_id,
+              name: I18n.t("admin.logs.staff_actions.actions." + action.id),
+              name_raw: action.id
+            };
+          });
+          actionTypes = _.sortBy(actionTypes, row => row.name);
+          this.set("userHistoryActions", actionTypes);
+        }
+      })
+      .finally(() => {
+        this.set("loading", false);
+      });
+  },
+
+  scheduleRefresh() {
+    Ember.run.scheduleOnce("afterRender", this, this._refresh);
   },
 
   resetFilters: function() {
-    this.set('filters', Ember.Object.create());
-    this.refresh();
-  }.on('init'),
+    this.set("filters", Ember.Object.create());
+    this.scheduleRefresh();
+  }.on("init"),
 
   _changeFilters: function(props) {
-    this.get('filters').setProperties(props);
-    this.refresh();
+    this.filters.setProperties(props);
+    this.scheduleRefresh();
   },
 
   actions: {
@@ -59,25 +89,27 @@ export default Ember.Controller.extend({
       var changed = {};
 
       // Special case, clear all action related stuff
-      if (key === 'actionFilter') {
+      if (key === "actionFilter") {
         changed.action_name = null;
         changed.action_id = null;
         changed.custom_type = null;
+        this.set("filterActionId", null);
       } else {
         changed[key] = null;
       }
       this._changeFilters(changed);
     },
 
-    clearAllFilters: function() {
+    clearAllFilters() {
+      this.set("filterActionId", null);
       this.resetFilters();
     },
 
     filterByAction: function(logItem) {
       this._changeFilters({
-        action_name: logItem.get('action_name'),
-        action_id: logItem.get('action'),
-        custom_type: logItem.get('custom_type')
+        action_name: logItem.get("action_name"),
+        action_id: logItem.get("action"),
+        custom_type: logItem.get("custom_type")
       });
     },
 
@@ -94,7 +126,7 @@ export default Ember.Controller.extend({
     },
 
     exportStaffActionLogs: function() {
-      exportEntity('staff_action').then(outputExportResult);
+      exportEntity("staff_action").then(outputExportResult);
     }
   }
 });

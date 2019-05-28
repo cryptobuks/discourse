@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require_dependency 'discourse_event'
 
@@ -61,7 +63,7 @@ describe DiscourseEvent do
 
       before do
         DiscourseEvent.on(:acid_face) do |user|
-          user.job =  'Supervillian'
+          user.job = 'Supervillian'
         end
 
         DiscourseEvent.trigger(:acid_face, harvey)

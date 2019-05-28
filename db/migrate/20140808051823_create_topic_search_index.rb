@@ -1,4 +1,6 @@
-class CreateTopicSearchIndex < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CreateTopicSearchIndex < ActiveRecord::Migration[4.2]
   def up
     # used for similarity search
     create_table :topic_search_data, id: false do |t|

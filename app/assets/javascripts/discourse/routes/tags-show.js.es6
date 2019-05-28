@@ -1,112 +1,174 @@
-import Composer from 'discourse/models/composer';
+import Composer from "discourse/models/composer";
 import showModal from "discourse/lib/show-modal";
-import { findTopicList } from 'discourse/routes/build-topic-route';
+import { findTopicList } from "discourse/routes/build-topic-route";
+import PermissionType from "discourse/models/permission-type";
 
 export default Discourse.Route.extend({
-  navMode: 'latest',
+  navMode: "latest",
+
+  queryParams: {
+    ascending: { refreshModel: true },
+    order: { refreshModel: true }
+  },
 
   renderTemplate() {
-    const controller = this.controllerFor('tags.show');
-    this.render('tags.show', { controller });
+    const controller = this.controllerFor("tags.show");
+    this.render("tags.show", { controller });
   },
 
   model(params) {
-    var tag = this.store.createRecord("tag", { id: Handlebars.Utils.escapeExpression(params.tag_id) }),
-        f = '';
+    const tag = this.store.createRecord("tag", {
+      id: Handlebars.Utils.escapeExpression(params.tag_id)
+    });
+    let f = "";
 
     if (params.additional_tags) {
-      this.set("additionalTags", params.additional_tags.split('/').map((t) => {
-        return this.store.createRecord("tag", { id: Handlebars.Utils.escapeExpression(t) }).id;
-      }));
+      this.set(
+        "additionalTags",
+        params.additional_tags.split("/").map(t => {
+          return this.store.createRecord("tag", {
+            id: Handlebars.Utils.escapeExpression(t)
+          }).id;
+        })
+      );
     } else {
-      this.set('additionalTags', null);
+      this.set("additionalTags", null);
     }
 
     if (params.category) {
-      f = 'c/';
-      if (params.parent_category) { f += params.parent_category + '/'; }
-      f += params.category + '/l/';
+      f = "c/";
+      if (params.parent_category) {
+        f += `${params.parent_category}/`;
+      }
+      f += `${params.category}/l/`;
     }
-    f += this.get('navMode');
-    this.set('filterMode', f);
+    f += this.navMode;
+    this.set("filterMode", f);
 
-    if (params.category) { this.set('categorySlug', params.category); }
-    if (params.parent_category) { this.set('parentCategorySlug', params.parent_category); }
+    if (params.category) {
+      this.set("categorySlug", params.category);
+    }
+    if (params.parent_category) {
+      this.set("parentCategorySlug", params.parent_category);
+    }
 
-    if (tag && tag.get("id") !== "none" && this.get("currentUser")) {
+    if (tag && tag.get("id") !== "none" && this.currentUser) {
       // If logged in, we should get the tag's user settings
-      return this.store.find("tagNotification", tag.get("id")).then(tn => {
-        this.set("tagNotification", tn);
-        return tag;
-      });
+      return this.store
+        .find("tagNotification", tag.get("id").toLowerCase())
+        .then(tn => {
+          this.set("tagNotification", tn);
+          return tag;
+        });
     }
 
     return tag;
   },
 
-  afterModel(tag) {
-    const controller = this.controllerFor('tags.show');
-    controller.set('loading', true);
+  afterModel(tag, transition) {
+    const controller = this.controllerFor("tags.show");
+    controller.set("loading", true);
 
-    const params = controller.getProperties('order', 'ascending');
+    const params = controller.getProperties("order", "ascending");
+    params.order = transition.to.queryParams.order || params.order;
+    params.ascending = transition.to.queryParams.ascending || params.ascending;
 
-    const categorySlug = this.get('categorySlug');
-    const parentCategorySlug = this.get('parentCategorySlug');
-    const filter = this.get('navMode');
-    const tag_id = (tag ? tag.id : 'none');
+    const categorySlug = this.categorySlug;
+    const parentCategorySlug = this.parentCategorySlug;
+    const filter = this.navMode;
+    const tagId = tag ? tag.id.toLowerCase() : "none";
 
     if (categorySlug) {
-      var category = Discourse.Category.findBySlug(categorySlug, parentCategorySlug);
+      const category = Discourse.Category.findBySlug(
+        categorySlug,
+        parentCategorySlug
+      );
       if (parentCategorySlug) {
-        params.filter = `tags/c/${parentCategorySlug}/${categorySlug}/${tag_id}/l/${filter}`;
+        params.filter = `tags/c/${parentCategorySlug}/${categorySlug}/${tagId}/l/${filter}`;
       } else {
-        params.filter = `tags/c/${categorySlug}/${tag_id}/l/${filter}`;
+        params.filter = `tags/c/${categorySlug}/${tagId}/l/${filter}`;
       }
-
-      this.set('category', category);
-    } else if (this.get("additionalTags")) {
-      params.filter = `tags/intersection/${tag_id}/${this.get('additionalTags').join('/')}`;
-      this.set('category', null);
+      if (category) {
+        category.setupGroupsAndPermissions();
+        this.set("category", category);
+      }
+    } else if (this.additionalTags) {
+      params.filter = `tags/intersection/${tagId}/${this.get(
+        "additionalTags"
+      ).join("/")}`;
+      this.set("category", null);
     } else {
-      params.filter = `tags/${tag_id}/l/${filter}`;
-      this.set('category', null);
+      params.filter = `tags/${tagId}/l/${filter}`;
+      this.set("category", null);
     }
 
-    return findTopicList(this.store, this.topicTrackingState, params.filter, params, {}).then(function(list) {
-      controller.set('list', list);
-      controller.set('canCreateTopic', list.get('can_create_topic'));
-      controller.set('loading', false);
+    return findTopicList(
+      this.store,
+      this.topicTrackingState,
+      params.filter,
+      params,
+      { cached: true }
+    ).then(list => {
+      if (list.topic_list.tags && list.topic_list.tags.length === 1) {
+        // Update name of tag (case might be different)
+        tag.setProperties({
+          id: list.topic_list.tags[0].name,
+          staff: list.topic_list.tags[0].staff
+        });
+      }
+      controller.setProperties({
+        list,
+        canCreateTopic: list.get("can_create_topic"),
+        loading: false,
+        canCreateTopicOnCategory:
+          this.get("category.permission") === PermissionType.FULL,
+        canCreateTopicOnTag: !tag.get("staff") || this.get("currentUser.staff")
+      });
     });
   },
 
   titleToken() {
-    const filterText = I18n.t('filters.' + this.get('navMode').replace('/', '.') + '.title'),
-          controller = this.controllerFor('tags.show');
+    const filterText = I18n.t(
+      `filters.${this.navMode.replace("/", ".")}.title`
+    );
+    const controller = this.controllerFor("tags.show");
 
-    if (controller.get('model.id')) {
-      if (this.get('category')) {
-        return I18n.t('tagging.filters.with_category', { filter: filterText, tag: controller.get('model.id'), category: this.get('category.name')});
+    if (controller.get("model.id")) {
+      if (this.category) {
+        return I18n.t("tagging.filters.with_category", {
+          filter: filterText,
+          tag: controller.get("model.id"),
+          category: this.get("category.name")
+        });
       } else {
-        return I18n.t('tagging.filters.without_category', { filter: filterText, tag: controller.get('model.id')});
+        return I18n.t("tagging.filters.without_category", {
+          filter: filterText,
+          tag: controller.get("model.id")
+        });
       }
     } else {
-      if (this.get('category')) {
-        return I18n.t('tagging.filters.untagged_with_category', { filter: filterText, category: this.get('category.name')});
+      if (this.category) {
+        return I18n.t("tagging.filters.untagged_with_category", {
+          filter: filterText,
+          category: this.get("category.name")
+        });
       } else {
-        return I18n.t('tagging.filters.untagged_without_category', { filter: filterText});
+        return I18n.t("tagging.filters.untagged_without_category", {
+          filter: filterText
+        });
       }
     }
   },
 
   setupController(controller, model) {
-    this.controllerFor('tags.show').setProperties({
+    this.controllerFor("tags.show").setProperties({
       model,
       tag: model,
-      additionalTags: this.get('additionalTags'),
-      category: this.get('category'),
-      filterMode: this.get('filterMode'),
-      navMode: this.get('navMode'),
-      tagNotification: this.get('tagNotification')
+      additionalTags: this.additionalTags,
+      category: this.category,
+      filterMode: this.filterMode,
+      navMode: this.navMode,
+      tagNotification: this.tagNotification
     });
   },
 
@@ -120,21 +182,35 @@ export default Discourse.Route.extend({
     },
 
     createTopic() {
-      var controller = this.controllerFor("tags.show"),
-          self = this;
+      const controller = this.controllerFor("tags.show");
 
-      this.controllerFor('composer').open({
-        categoryId: controller.get('category.id'),
-        action: Composer.CREATE_TOPIC,
-        draftKey: controller.get('list.draft_key'),
-        draftSequence: controller.get('list.draft_sequence')
-      }).then(function() {
-        // Pre-fill the tags input field
-        if (controller.get('model.id')) {
-          var c = self.controllerFor('composer').get('model');
-          c.set('tags', _.flatten([controller.get('model.id')], controller.get('additionalTags')));
-        }
-      });
+      if (controller.get("list.draft")) {
+        this.openTopicDraft(controller.get("list"));
+      } else {
+        this.controllerFor("composer")
+          .open({
+            categoryId: controller.get("category.id"),
+            action: Composer.CREATE_TOPIC,
+            draftKey: controller.get("list.draft_key"),
+            draftSequence: controller.get("list.draft_sequence")
+          })
+          .then(() => {
+            // Pre-fill the tags input field
+            if (controller.get("model.id")) {
+              const composerModel = this.controllerFor("composer").get("model");
+
+              composerModel.set(
+                "tags",
+                _.compact(
+                  _.flatten([
+                    controller.get("model.id"),
+                    controller.get("additionalTags")
+                  ])
+                )
+              );
+            }
+          });
+      }
     },
 
     didTransition() {

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'mysql2'
 
 module ImportScripts::PhpBB3
@@ -53,6 +55,6 @@ module ImportScripts::PhpBB3
     end
   end
 
-  class UnsupportedVersionError < RuntimeError;
+  class UnsupportedVersionError < RuntimeError
   end
 end

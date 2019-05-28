@@ -1,4 +1,6 @@
-class CreateEmailChangeRequests < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CreateEmailChangeRequests < ActiveRecord::Migration[4.2]
   def change
     create_table :email_change_requests do |t|
       t.integer :user_id, null: false

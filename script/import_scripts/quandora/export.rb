@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 require 'yaml'
 require_relative 'quandora_api'
 
-def load_config file
-    config = YAML::load_file(File.join(__dir__, file))
+def load_config(file)
+  config = YAML::load_file(File.join(__dir__, file))
     @domain = config['domain']
     @username = config['username']
     @password = config['password']
@@ -27,4 +29,3 @@ end
 
 load_config ARGV.shift
 export
-

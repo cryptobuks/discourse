@@ -1,11 +1,13 @@
+# frozen_string_literal: true
+
 #mixin for all guardian methods dealing with category permisions
 module CategoryGuardian
 
   # Creating Method
-  def can_create_category?(parent=nil)
+  def can_create_category?(parent = nil)
     is_admin? ||
     (
-      SiteSetting.allow_moderators_to_create_categories &&
+      SiteSetting.moderators_create_categories &&
       is_moderator?
     )
   end
@@ -14,7 +16,7 @@ module CategoryGuardian
   def can_edit_category?(category)
     is_admin? ||
     (
-      SiteSetting.allow_moderators_to_create_categories &&
+      SiteSetting.moderators_create_categories &&
       is_moderator? &&
       can_see_category?(category)
     )
@@ -34,10 +36,10 @@ module CategoryGuardian
     if category.topic_count != 0
       oldest_topic = category.topics.where.not(id: category.topic_id).order('created_at ASC').limit(1).first
       if oldest_topic
-        return I18n.t('category.cannot_delete.topic_exists', {count: category.topic_count, topic_link: "<a href=\"#{oldest_topic.url}\">#{oldest_topic.title}</a>"})
+        return I18n.t('category.cannot_delete.topic_exists', count: category.topic_count, topic_link: "<a href=\"#{oldest_topic.url}\">#{CGI.escapeHTML(oldest_topic.title)}</a>")
       else
         # This is a weird case, probably indicating a bug.
-        return I18n.t('category.cannot_delete.topic_exists_no_oldest', {count: category.topic_count})
+        return I18n.t('category.cannot_delete.topic_exists_no_oldest', count: category.topic_count)
       end
     end
 

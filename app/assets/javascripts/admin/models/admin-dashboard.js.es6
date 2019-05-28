@@ -1,38 +1,43 @@
-import { ajax } from 'discourse/lib/ajax';
+import { ajax } from "discourse/lib/ajax";
+
+const GENERAL_ATTRIBUTES = [
+  "updated_at",
+  "discourse_updated_at",
+  "release_notes_link"
+];
 
 const AdminDashboard = Discourse.Model.extend({});
 
 AdminDashboard.reopenClass({
-
-  /**
-    Fetch all dashboard data. This can be an expensive request when the cached data
-    has expired and the server must collect the data again.
-
-    @method find
-    @return {jqXHR} a jQuery Promise object
-  **/
-  find: function() {
-    return ajax("/admin/dashboard.json").then(function(json) {
-      var model = AdminDashboard.create(json);
-      model.set('loaded', true);
+  fetch() {
+    return ajax("/admin/dashboard.json").then(json => {
+      const model = AdminDashboard.create();
+      model.set("version_check", json.version_check);
       return model;
     });
   },
 
-  /**
-    Only fetch the list of problems that should be rendered on the dashboard.
-    The model will only have its "problems" attribute set.
+  fetchGeneral() {
+    return ajax("/admin/dashboard/general.json").then(json => {
+      const model = AdminDashboard.create();
 
-    @method fetchProblems
-    @return {jqXHR} a jQuery Promise object
-  **/
-  fetchProblems: function() {
-    return ajax("/admin/dashboard/problems.json", {
-      type: 'GET',
-      dataType: 'json'
-    }).then(function(json) {
-      var model = AdminDashboard.create(json);
-      model.set('loaded', true);
+      const attributes = {};
+      GENERAL_ATTRIBUTES.forEach(a => (attributes[a] = json[a]));
+
+      model.setProperties({
+        reports: json.reports,
+        attributes,
+        loaded: true
+      });
+
+      return model;
+    });
+  },
+
+  fetchProblems() {
+    return ajax("/admin/dashboard/problems.json").then(json => {
+      const model = AdminDashboard.create(json);
+      model.set("loaded", true);
       return model;
     });
   }

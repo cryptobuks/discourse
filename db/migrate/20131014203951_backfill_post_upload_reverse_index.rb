@@ -1,4 +1,6 @@
-class BackfillPostUploadReverseIndex < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class BackfillPostUploadReverseIndex < ActiveRecord::Migration[4.2]
 
   def up
     # clean the reverse index

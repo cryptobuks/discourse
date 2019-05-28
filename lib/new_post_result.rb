@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_dependency 'has_errors'
 
 class NewPostResult
@@ -7,10 +9,10 @@ class NewPostResult
 
   attr_accessor :reason
   attr_accessor :post
-  attr_accessor :queued_post
+  attr_accessor :reviewable
   attr_accessor :pending_count
 
-  def initialize(action, success=false)
+  def initialize(action, success = false)
     @action = action
     @success = success
   end
@@ -21,6 +23,23 @@ class NewPostResult
     else
       add_errors_from(obj)
     end
+  end
+
+  def check_errors(arr)
+    if arr.empty?
+      @success = true
+    else
+      arr.each { |e| errors.add(:base, e) unless errors[:base].include?(e) }
+    end
+  end
+
+  def queued_post
+    Discourse.deprecate(
+      "NewPostManager#queued_post is deprecated. Please use #reviewable instead.",
+      output_in_test: true
+    )
+
+    reviewable
   end
 
   def success?

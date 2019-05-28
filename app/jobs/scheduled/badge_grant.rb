@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Jobs
 
   class BadgeGrant < Jobs::Scheduled
@@ -15,7 +17,7 @@ module Jobs
           BadgeGranter.backfill(b)
         rescue => ex
           # TODO - expose errors in UI
-          Discourse.handle_job_exception(ex, error_context({}, code_desc: 'Exception granting badges', extra: {badge_id: b.id}))
+          Discourse.handle_job_exception(ex, error_context({}, code_desc: 'Exception granting badges', extra: { badge_id: b.id }))
         end
       end
 

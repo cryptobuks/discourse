@@ -1,7 +1,7 @@
-class CategorySearchData < ActiveRecord::Base
-  belongs_to :category
+# frozen_string_literal: true
 
-  validates_presence_of :search_data
+class CategorySearchData < ActiveRecord::Base
+  include HasSearchData
 end
 
 # == Schema Information
@@ -12,8 +12,9 @@ end
 #  search_data :tsvector
 #  raw_data    :text
 #  locale      :text
+#  version     :integer          default(0)
 #
 # Indexes
 #
-#  idx_search_category  (search_data)
+#  idx_search_category  (search_data) USING gin
 #

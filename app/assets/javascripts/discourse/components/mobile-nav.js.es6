@@ -1,33 +1,32 @@
-import { on, observes } from 'ember-addons/ember-computed-decorators';
+import { on, observes } from "ember-addons/ember-computed-decorators";
 
 export default Ember.Component.extend({
-
-  @on('init')
+  @on("init")
   _init() {
-    if (!this.get('site.mobileView')) {
-      var classes = this.get('desktopClass');
+    if (!this.get("site.mobileView")) {
+      var classes = this.desktopClass;
       if (classes) {
-        classes = classes.split(' ');
-        this.set('classNames', classes);
+        classes = classes.split(" ");
+        this.set("classNames", classes);
       }
     }
   },
 
-  tagName: 'ul',
+  tagName: "ul",
   selectedHtml: null,
 
-  classNames: ['mobile-nav'],
+  classNames: ["mobile-nav"],
 
-  @observes('currentPath')
+  @observes("currentPath")
   currentPathChanged() {
-    this.set('expanded', false);
-    Em.run.next(() => this._updateSelectedHtml());
+    this.set("expanded", false);
+    Ember.run.next(() => this._updateSelectedHtml());
   },
 
-  _updateSelectedHtml(){
-    const active = this.$('.active');
+  _updateSelectedHtml() {
+    const active = this.$(".active");
     if (active && active.html) {
-      this.set('selectedHtml', active.html());
+      this.set("selectedHtml", active.html());
     }
   },
 
@@ -35,21 +34,24 @@ export default Ember.Component.extend({
     this._updateSelectedHtml();
   },
 
-  @on('didInsertElement')
-  _bindClick() {
-    this.$().on("click.mobile-nav", 'ul li', () => {
-      this.set('expanded', false);
-    });
-  },
-
-  @on('willDestroyElement')
-  _unbindClick() {
-    this.$().off("click.mobile-nav", 'ul li');
-  },
-
   actions: {
-    toggleExpanded(){
-      this.toggleProperty('expanded');
+    toggleExpanded() {
+      this.toggleProperty("expanded");
+
+      Ember.run.next(() => {
+        if (this.expanded) {
+          $(window)
+            .off("click.mobile-nav")
+            .on("click.mobile-nav", e => {
+              let expander = this.$(".expander");
+              expander = expander && expander[0];
+              if ($(e.target)[0] !== expander) {
+                this.set("expanded", false);
+                $(window).off("click.mobile-nav");
+              }
+            });
+        }
+      });
     }
   }
 });

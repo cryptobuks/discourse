@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe Jobs::UpdateGravatar do
@@ -8,7 +10,8 @@ describe Jobs::UpdateGravatar do
     expect(user.user_avatar.gravatar_upload_id).to eq(nil)
 
     png = Base64.decode64("R0lGODlhAQABALMAAAAAAIAAAACAAICAAAAAgIAAgACAgMDAwICAgP8AAAD/AP//AAAA//8A/wD//wBiZCH5BAEAAA8ALAAAAAABAAEAAAQC8EUAOw==")
-    FakeWeb.register_uri(:get, "http://www.gravatar.com/avatar/d10ca8d11301c2f4993ac2279ce4b930.png?s=500&d=404", body: png)
+    url = "https://www.gravatar.com/avatar/d10ca8d11301c2f4993ac2279ce4b930.png?s=360&d=404"
+    stub_request(:get, url).to_return(body: png)
 
     SiteSetting.automatically_download_gravatars = true
 

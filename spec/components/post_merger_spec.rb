@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'post_merger'
 
 describe PostMerger do
-  let(:moderator) { Fabricate(:moderator) }
-  let(:admin) { Fabricate(:admin) }
-  let(:user) { Fabricate(:user) }
+  fab!(:moderator) { Fabricate(:moderator) }
+  fab!(:admin) { Fabricate(:admin) }
+  fab!(:user) { Fabricate(:user) }
   let(:post) { create_post }
   let(:topic) { post.topic }
 
@@ -15,9 +17,8 @@ describe PostMerger do
       reply3 = create_post(topic: topic, raw: 'The third reply', post_number: 4, user: user)
       replies = [reply3, reply2, reply1]
 
-      message = MessageBus.track_publish { PostMerger.new(admin, replies).merge }.last
+      message = MessageBus.track_publish("/topic/#{topic.id}") { PostMerger.new(admin, replies).merge }.last
 
-      expect(message.channel).to eq("/topic/#{topic.id}")
       expect(message.data[:type]).to eq(:revised)
       expect(message.data[:post_number]).to eq(reply3.post_number)
 
@@ -36,18 +37,18 @@ describe PostMerger do
     end
 
     it "should not allow the first post in a topic to be merged" do
-      post.update_attributes!(user: user)
+      post.update!(user: user)
       reply1 = create_post(topic: topic, post_number: post.post_number, user: user)
       reply2 = create_post(topic: topic, post_number: post.post_number, user: user)
 
-      expect{ PostMerger.new(admin, [reply2, post, reply1]).merge }.to raise_error(Discourse::InvalidAccess)
+      expect { PostMerger.new(admin, [reply2, post, reply1]).merge }.to raise_error(Discourse::InvalidAccess)
     end
 
     it "should only allow staff user to merge posts" do
       reply1 = create_post(topic: topic, post_number: post.post_number, user: user)
       reply2 = create_post(topic: topic, post_number: post.post_number, user: user)
 
-      expect{ PostMerger.new(user, [reply2, reply1]).merge }.to raise_error(Discourse::InvalidAccess)
+      expect { PostMerger.new(user, [reply2, reply1]).merge }.to raise_error(Discourse::InvalidAccess)
     end
 
     it "should not allow posts from different topics to be merged" do
@@ -67,4 +68,3 @@ describe PostMerger do
     end
   end
 end
-

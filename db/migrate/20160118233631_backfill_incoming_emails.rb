@@ -1,4 +1,6 @@
-class BackfillIncomingEmails < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class BackfillIncomingEmails < ActiveRecord::Migration[4.2]
   def up
     execute <<-SQL
       INSERT INTO incoming_emails (post_id, created_at, updated_at, user_id, topic_id, message_id, from_address, to_addresses, subject)

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class PostStat < ActiveRecord::Base
   belongs_to :post
 end
@@ -11,8 +13,8 @@ end
 #  drafts_saved                 :integer
 #  typing_duration_msecs        :integer
 #  composer_open_duration_msecs :integer
-#  created_at                   :datetime
-#  updated_at                   :datetime
+#  created_at                   :datetime         not null
+#  updated_at                   :datetime         not null
 #
 # Indexes
 #

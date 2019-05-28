@@ -1,4 +1,6 @@
-class ResetApplicationRequests < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class ResetApplicationRequests < ActiveRecord::Migration[4.2]
 
   def up
     # enum changed we need to clear the data

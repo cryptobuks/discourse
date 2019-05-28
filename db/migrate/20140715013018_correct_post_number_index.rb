@@ -1,4 +1,6 @@
-class CorrectPostNumberIndex < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CorrectPostNumberIndex < ActiveRecord::Migration[4.2]
   def change
 
     begin

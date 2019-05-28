@@ -1,4 +1,6 @@
-class RemoveInvalidTopicUser < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class RemoveInvalidTopicUser < ActiveRecord::Migration[4.2]
   def up
     execute <<-SQL
       DELETE FROM topic_users

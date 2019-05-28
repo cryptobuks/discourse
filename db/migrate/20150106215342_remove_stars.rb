@@ -1,4 +1,6 @@
-class RemoveStars < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class RemoveStars < ActiveRecord::Migration[4.2]
   def up
     r = execute <<SQL
     INSERT INTO post_actions(user_id, post_id, post_action_type_id, created_at, updated_at)

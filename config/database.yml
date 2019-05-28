@@ -1,10 +1,11 @@
 development:
   prepared_statements: false
   adapter: postgresql
-  database: discourse_development
+  database: <%= ENV['DISCOURSE_DEV_DB'] || 'discourse_development' %>
   min_messages: warning
   pool: 5
   timeout: 5000
+  checkout_timeout: <%= ENV['CHECKOUT_TIMEOUT'] || 5 %>
   host_names:
     ### Don't include the port number here. Change the "port" site setting instead, at /admin/site_settings.
     ### If you change this setting you will need to
@@ -18,7 +19,7 @@ development:
 test:
   prepared_statements: false
   adapter: postgresql
-  database: discourse_test
+  database: <%= ENV["RAILS_DB"] ? ENV["RAILS_DB"] : "discourse_test" %>
   min_messages: warning
   pool: 5
   timeout: 5000
@@ -35,7 +36,6 @@ profile:
   timeout: 5000
   host_names:
     - "localhost"
-
 # You may be surprised production is not here, it is sourced from application.rb using a monkey patch
 # This is done for 2 reasons
 #

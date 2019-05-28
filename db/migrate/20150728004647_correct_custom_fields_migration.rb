@@ -1,4 +1,6 @@
-class CorrectCustomFieldsMigration < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CorrectCustomFieldsMigration < ActiveRecord::Migration[4.2]
   def up
     execute <<SQL
       DROP INDEX index_post_custom_fields_on_name_and_value

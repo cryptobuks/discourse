@@ -1,37 +1,36 @@
+# frozen_string_literal: true
+
 require_dependency 'mem_info'
 
 class AdminDashboardData
   include StatsCacheable
 
-  GLOBAL_REPORTS ||= [
-    'visits',
-    'signups',
-    'profile_views',
-    'topics',
-    'posts',
-    'time_to_first_response',
-    'topics_with_no_response',
-    'likes',
-    'flags',
-    'bookmarks',
-    'emails',
-  ]
+  # kept for backward compatibility
+  GLOBAL_REPORTS ||= []
 
-  PAGE_VIEW_REPORTS ||= ['page_view_total_reqs'] + ApplicationRequest.req_types.keys.select { |r| r =~ /^page_view_/ && r !~ /mobile/ }.map { |r| r + "_reqs" }
+  def initialize(opts = {})
+    @opts = opts
+  end
 
-  PRIVATE_MESSAGE_REPORTS ||= [
-    'user_to_user_private_messages',
-    'system_private_messages',
-    'notify_moderators_private_messages',
-    'notify_user_private_messages',
-    'moderator_warning_private_messages',
-  ]
+  def self.fetch_stats
+    new.as_json
+  end
 
-  HTTP_REPORTS ||= ApplicationRequest.req_types.keys.select { |r| r =~ /^http_/ }.map { |r| r + "_reqs" }.sort
+  def get_json
+    {}
+  end
 
-  USER_REPORTS ||= ['users_by_trust_level']
+  def as_json(_options = nil)
+    @json ||= get_json
+  end
 
-  MOBILE_REPORTS ||= ['mobile_visits'] + ApplicationRequest.req_types.keys.select {|r| r =~ /mobile/}.map { |r| r + "_reqs" }
+  def self.reports(source)
+    source.map { |type| Report.find(type).as_json }
+  end
+
+  def self.stats_cache_key
+    "dashboard-data-#{Report::SCHEMA_VERSION}"
+  end
 
   def self.add_problem_check(*syms, &blk)
     @problem_syms.push(*syms) if syms
@@ -42,7 +41,7 @@ class AdminDashboardData
   def problems
     problems = []
     AdminDashboardData.problem_syms.each do |sym|
-      problems << send(sym)
+      problems << public_send(sym)
     end
     AdminDashboardData.problem_blocks.each do |blk|
       problems << instance_exec(&blk)
@@ -62,7 +61,7 @@ class AdminDashboardData
   end
 
   def self.problems_started_key
-    "dash-problems-started-at"
+    'dash-problems-started-at'
   end
 
   def self.set_problems_started
@@ -90,13 +89,14 @@ class AdminDashboardData
       'dashboard.poll_pop3_auth_error'
     ]
 
-    add_problem_check :rails_env_check, :host_names_check,
+    add_problem_check :rails_env_check, :host_names_check, :force_https_check,
                       :ram_check, :google_oauth2_config_check,
                       :facebook_config_check, :twitter_config_check,
-                      :github_config_check, :s3_config_check, :image_magick_check,
-                      :failing_emails_check,
+                      :github_config_check, :s3_config_check,
+                      :image_magick_check, :failing_emails_check,
                       :subfolder_ends_in_slash_check,
-                      :pop3_polling_configuration, :email_polling_errored_recently
+                      :pop3_polling_configuration, :email_polling_errored_recently,
+                      :out_of_date_themes, :unreachable_themes
 
     add_problem_check do
       sidekiq_check || queue_size_check
@@ -104,23 +104,15 @@ class AdminDashboardData
   end
   reset_problem_checks
 
-  def self.fetch_stats
-    AdminDashboardData.new.as_json
-  end
-
-  def self.stats_cache_key
-    'dash-stats'
-  end
-
-  def self.fetch_problems
-    AdminDashboardData.new.problems
+  def self.fetch_problems(opts = {})
+    AdminDashboardData.new(opts).problems
   end
 
   def self.problem_message_check(i18n_key)
-    $redis.get(problem_message_key(i18n_key)) ? I18n.t(i18n_key) : nil
+    $redis.get(problem_message_key(i18n_key)) ? I18n.t(i18n_key, base_path: Discourse.base_path) : nil
   end
 
-  def self.add_problem_message(i18n_key, expire_seconds=nil)
+  def self.add_problem_message(i18n_key, expire_seconds = nil)
     if expire_seconds.to_i > 0
       $redis.setex problem_message_key(i18n_key), expire_seconds.to_i, 1
     else
@@ -134,29 +126,6 @@ class AdminDashboardData
 
   def self.problem_message_key(i18n_key)
     "admin-problem:#{i18n_key}"
-  end
-
-  def as_json(_options = nil)
-    @json ||= {
-      global_reports: AdminDashboardData.reports(GLOBAL_REPORTS),
-      page_view_reports: AdminDashboardData.reports(PAGE_VIEW_REPORTS),
-      private_message_reports: AdminDashboardData.reports(PRIVATE_MESSAGE_REPORTS),
-      http_reports: AdminDashboardData.reports(HTTP_REPORTS),
-      user_reports: AdminDashboardData.reports(USER_REPORTS),
-      mobile_reports: AdminDashboardData.reports(MOBILE_REPORTS),
-      admins: User.admins.count,
-      moderators: User.moderators.count,
-      suspended: User.suspended.count,
-      blocked: User.blocked.count,
-      top_referrers: IncomingLinksReport.find('top_referrers').as_json,
-      top_traffic_sources: IncomingLinksReport.find('top_traffic_sources').as_json,
-      top_referred_topics: IncomingLinksReport.find('top_referred_topics').as_json,
-      updated_at: Time.zone.now.as_json
-    }
-  end
-
-  def self.reports(source)
-    source.map { |type| Report.find(type).as_json }
   end
 
   def rails_env_check
@@ -178,30 +147,46 @@ class AdminDashboardData
   end
 
   def ram_check
-    I18n.t('dashboard.memory_warning') if MemInfo.new.mem_total && MemInfo.new.mem_total < 1_000_000
+    I18n.t('dashboard.memory_warning') if MemInfo.new.mem_total && MemInfo.new.mem_total < 950_000
   end
 
   def google_oauth2_config_check
-    I18n.t('dashboard.google_oauth2_config_warning') if SiteSetting.enable_google_oauth2_logins && (SiteSetting.google_oauth2_client_id.blank? || SiteSetting.google_oauth2_client_secret.blank?)
+    if SiteSetting.enable_google_oauth2_logins && (SiteSetting.google_oauth2_client_id.blank? || SiteSetting.google_oauth2_client_secret.blank?)
+      I18n.t('dashboard.google_oauth2_config_warning', base_path: Discourse.base_path)
+    end
   end
 
   def facebook_config_check
-    I18n.t('dashboard.facebook_config_warning') if SiteSetting.enable_facebook_logins && (SiteSetting.facebook_app_id.blank? || SiteSetting.facebook_app_secret.blank?)
+    if SiteSetting.enable_facebook_logins && (SiteSetting.facebook_app_id.blank? || SiteSetting.facebook_app_secret.blank?)
+      I18n.t('dashboard.facebook_config_warning', base_path: Discourse.base_path)
+    end
   end
 
   def twitter_config_check
-    I18n.t('dashboard.twitter_config_warning') if SiteSetting.enable_twitter_logins && (SiteSetting.twitter_consumer_key.blank? || SiteSetting.twitter_consumer_secret.blank?)
+    if SiteSetting.enable_twitter_logins && (SiteSetting.twitter_consumer_key.blank? || SiteSetting.twitter_consumer_secret.blank?)
+      I18n.t('dashboard.twitter_config_warning', base_path: Discourse.base_path)
+    end
   end
 
   def github_config_check
-    I18n.t('dashboard.github_config_warning') if SiteSetting.enable_github_logins && (SiteSetting.github_client_id.blank? || SiteSetting.github_client_secret.blank?)
+    if SiteSetting.enable_github_logins && (SiteSetting.github_client_id.blank? || SiteSetting.github_client_secret.blank?)
+      I18n.t('dashboard.github_config_warning', base_path: Discourse.base_path)
+    end
   end
 
   def s3_config_check
-    bad_keys = (SiteSetting.s3_access_key_id.blank? || SiteSetting.s3_secret_access_key.blank?) && !SiteSetting.s3_use_iam_profile
+    # if set via global setting it is validated during the `use_s3?` call
+    if !GlobalSetting.use_s3?
+      bad_keys = (SiteSetting.s3_access_key_id.blank? || SiteSetting.s3_secret_access_key.blank?) && !SiteSetting.s3_use_iam_profile
 
-    return I18n.t('dashboard.s3_config_warning') if SiteSetting.enable_s3_uploads && (bad_keys || SiteSetting.s3_upload_bucket.blank?)
-    return I18n.t('dashboard.s3_backup_config_warning') if SiteSetting.enable_s3_backups && (bad_keys || SiteSetting.s3_backup_bucket.blank?)
+      if SiteSetting.enable_s3_uploads && (bad_keys || SiteSetting.s3_upload_bucket.blank?)
+        return I18n.t('dashboard.s3_config_warning', base_path: Discourse.base_path)
+      end
+
+      if SiteSetting.backup_location == BackupLocationSiteSetting::S3 && (bad_keys || SiteSetting.s3_backup_bucket.blank?)
+        return I18n.t('dashboard.s3_backup_config_warning', base_path: Discourse.base_path)
+      end
+    end
     nil
   end
 
@@ -211,7 +196,7 @@ class AdminDashboardData
 
   def failing_emails_check
     num_failed_jobs = Jobs.num_email_retry_jobs
-    I18n.t('dashboard.failing_emails_warning', num_failed_jobs: num_failed_jobs) if num_failed_jobs > 0
+    I18n.t('dashboard.failing_emails_warning', num_failed_jobs: num_failed_jobs, base_path: Discourse.base_path) if num_failed_jobs > 0
   end
 
   def subfolder_ends_in_slash_check
@@ -224,14 +209,42 @@ class AdminDashboardData
 
   def email_polling_errored_recently
     errors = Jobs::PollMailbox.errors_in_past_24_hours
-    I18n.t('dashboard.email_polling_errored_recently', count: errors) if errors > 0
+    I18n.t('dashboard.email_polling_errored_recently', count: errors, base_path: Discourse.base_path) if errors > 0
   end
 
   def missing_mailgun_api_key
     return unless SiteSetting.reply_by_email_enabled
-    return unless ActionMailer::Base.smtp_settings[:address]["smtp.mailgun.org"]
+    return unless ActionMailer::Base.smtp_settings[:address]['smtp.mailgun.org']
     return unless SiteSetting.mailgun_api_key.blank?
     I18n.t('dashboard.missing_mailgun_api_key')
   end
 
+  def force_https_check
+    return unless @opts[:check_force_https]
+    I18n.t('dashboard.force_https_warning', base_path: Discourse.base_path) unless SiteSetting.force_https
+  end
+
+  def out_of_date_themes
+    old_themes = RemoteTheme.out_of_date_themes
+    return unless old_themes.present?
+
+    themes_html_format(old_themes, 'dashboard.out_of_date_themes')
+  end
+
+  def unreachable_themes
+    themes = RemoteTheme.unreachable_themes
+    return unless themes.present?
+
+    themes_html_format(themes, 'dashboard.unreachable_themes')
+  end
+
+  private
+
+  def themes_html_format(themes, i18n_key)
+    html = themes.map do |name, id|
+      "<li><a href=\"/admin/customize/themes/#{id}\">#{CGI.escapeHTML(name)}</a></li>"
+    end.join("\n")
+
+    "#{I18n.t(i18n_key)}<ul>#{html}</ul>"
+  end
 end

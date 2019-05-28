@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Wizard
   class StepUpdater
     include ActiveModel::Model
@@ -29,8 +31,13 @@ class Wizard
     end
 
     def update_setting(id, value)
-      value.strip! if value.is_a?(String)
-      SiteSetting.set_and_log(id, value, @current_user) if SiteSetting.send(id) != value
+      value = value.strip if value.is_a?(String)
+
+      if !value.is_a?(Upload) && SiteSetting.type_supervisor.get_type(id) == :upload
+        value = Upload.get_from_url(value) || ''
+      end
+
+      SiteSetting.set_and_log(id, value, @current_user) if SiteSetting.get(id) != value
     end
 
     def apply_setting(id)
@@ -44,7 +51,7 @@ class Wizard
     end
 
     def apply_settings(*ids)
-      ids.each {|id| apply_setting(id)}
+      ids.each { |id| apply_setting(id) }
     end
 
   end

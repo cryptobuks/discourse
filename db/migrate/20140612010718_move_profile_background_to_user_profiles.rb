@@ -1,4 +1,6 @@
-class MoveProfileBackgroundToUserProfiles < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class MoveProfileBackgroundToUserProfiles < ActiveRecord::Migration[4.2]
   def up
     add_column :user_profiles, :profile_background, :string, limit: 255
 

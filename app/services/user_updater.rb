@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class UserUpdater
 
   CATEGORY_IDS = {
@@ -15,16 +17,14 @@ class UserUpdater
   }
 
   OPTION_ATTR = [
-    :email_always,
     :mailing_list_mode,
     :mailing_list_mode_frequency,
     :email_digests,
-    :email_direct,
-    :email_private_messages,
+    :email_level,
+    :email_messages_level,
     :external_links_in_new_tab,
     :enable_quoting,
     :dynamic_favicon,
-    :disable_jump_reply,
     :automatically_unpin_topics,
     :digest_after_minutes,
     :new_topic_duration_minutes,
@@ -33,7 +33,13 @@ class UserUpdater
     :email_previous_replies,
     :email_in_reply_to,
     :like_notification_frequency,
-    :include_tl0_in_digests
+    :include_tl0_in_digests,
+    :theme_ids,
+    :allow_private_messages,
+    :homepage_id,
+    :hide_profile_and_presence,
+    :text_size,
+    :title_count_mode
   ]
 
   def initialize(actor, user)
@@ -50,8 +56,18 @@ class UserUpdater
     unless SiteSetting.enable_sso && SiteSetting.sso_overrides_bio
       user_profile.bio_raw = attributes.fetch(:bio_raw) { user_profile.bio_raw }
     end
-    user_profile.profile_background = attributes.fetch(:profile_background) { user_profile.profile_background }
-    user_profile.card_background = attributes.fetch(:card_background) { user_profile.card_background }
+
+    if attributes[:profile_background_upload_url] == ""
+      user_profile.profile_background_upload_id = nil
+    elsif upload = Upload.get_from_url(attributes[:profile_background_upload_url])
+      user_profile.profile_background_upload_id = upload.id
+    end
+
+    if attributes[:card_background_upload_url] == ""
+      user_profile.card_background_upload_id = nil
+    elsif upload = Upload.get_from_url(attributes[:card_background_upload_url])
+      user_profile.card_background_upload_id = upload.id
+    end
 
     old_user_name = user.name.present? ? user.name : ""
     user.name = attributes.fetch(:name) { user.name }
@@ -59,8 +75,10 @@ class UserUpdater
     user.locale = attributes.fetch(:locale) { user.locale }
     user.date_of_birth = attributes.fetch(:date_of_birth) { user.date_of_birth }
 
-    if guardian.can_grant_title?(user)
-      user.title = attributes.fetch(:title) { user.title }
+    if attributes[:title] &&
+      attributes[:title] != user.title &&
+      guardian.can_grant_title?(user, attributes[:title])
+      user.title = attributes[:title]
     end
 
     CATEGORY_IDS.each do |attribute, level|
@@ -70,20 +88,38 @@ class UserUpdater
     end
 
     TAG_NAMES.each do |attribute, level|
-      TagUser.batch_set(user, level, attributes[attribute])
+      if attributes.has_key?(attribute)
+        TagUser.batch_set(user, level, attributes[attribute]&.split(',') || [])
+      end
     end
 
     save_options = false
+
+    # special handling for theme_id cause we need to bump a sequence number
+    if attributes.key?(:theme_ids)
+      user_guardian = Guardian.new(user)
+      attributes[:theme_ids].reject!(&:blank?)
+      attributes[:theme_ids].map!(&:to_i)
+      if user_guardian.allow_themes?(attributes[:theme_ids])
+        user.user_option.theme_key_seq += 1 if user.user_option.theme_ids != attributes[:theme_ids]
+      else
+        attributes.delete(:theme_ids)
+      end
+    end
+
+    if attributes.key?(:text_size)
+      user.user_option.text_size_seq += 1 if user.user_option.text_size.to_s != attributes[:text_size]
+    end
 
     OPTION_ATTR.each do |attribute|
       if attributes.key?(attribute)
         save_options = true
 
-        if [true, false].include?(user.user_option.send(attribute))
+        if [true, false].include?(user.user_option.public_send(attribute))
           val = attributes[attribute].to_s == 'true'
-          user.user_option.send("#{attribute}=", val)
+          user.user_option.public_send("#{attribute}=", val)
         else
-          user.user_option.send("#{attribute}=", attributes[attribute])
+          user.user_option.public_send("#{attribute}=", attributes[attribute])
         end
       end
     end
@@ -96,46 +132,72 @@ class UserUpdater
       user.custom_fields = user.custom_fields.merge(fields)
     end
 
+    saved = nil
+
     User.transaction do
       if attributes.key?(:muted_usernames)
         update_muted_users(attributes[:muted_usernames])
       end
 
-      saved = (!save_options || user.user_option.save) && user_profile.save && user.save
-      if saved
-        DiscourseEvent.trigger(:user_updated, user)
-
-        # log name changes
-        if attributes[:name].present? && old_user_name.downcase != attributes.fetch(:name).downcase
-          StaffActionLogger.new(@actor).log_name_change(user.id, old_user_name, attributes.fetch(:name))
-        elsif attributes[:name].blank? && old_user_name.present?
-          StaffActionLogger.new(@actor).log_name_change(user.id, old_user_name, "")
-        end
+      if attributes.key?(:ignored_usernames)
+        update_ignored_users(attributes[:ignored_usernames])
       end
-      saved
+
+      name_changed = user.name_changed?
+      if (saved = (!save_options || user.user_option.save) && user_profile.save && user.save) &&
+         (name_changed && old_user_name.casecmp(attributes.fetch(:name)) != 0)
+
+        StaffActionLogger.new(@actor).log_name_change(
+          user.id,
+          old_user_name,
+          attributes.fetch(:name) { '' }
+        )
+      end
     end
+
+    DiscourseEvent.trigger(:user_updated, user) if saved
+    saved
   end
 
   def update_muted_users(usernames)
     usernames ||= ""
-    desired_ids = User.where(username: usernames.split(",")).pluck(:id)
+    desired_usernames = usernames.split(",").reject { |username| user.username == username }
+    desired_ids = User.where(username: desired_usernames).pluck(:id)
     if desired_ids.empty?
       MutedUser.where(user_id: user.id).destroy_all
     else
       MutedUser.where('user_id = ? AND muted_user_id not in (?)', user.id, desired_ids).destroy_all
 
       # SQL is easier here than figuring out how to do the same in AR
-      MutedUser.exec_sql("INSERT into muted_users(user_id, muted_user_id, created_at, updated_at)
-                          SELECT :user_id, id, :now, :now
-                          FROM users
-                          WHERE
-                            id in (:desired_ids) AND
-                            id NOT IN (
-                              SELECT muted_user_id
-                              FROM muted_users
-                              WHERE user_id = :user_id
-                            )",
-                          now: Time.now, user_id: user.id, desired_ids: desired_ids)
+      DB.exec(<<~SQL, now: Time.now, user_id: user.id, desired_ids: desired_ids)
+        INSERT into muted_users(user_id, muted_user_id, created_at, updated_at)
+        SELECT :user_id, id, :now, :now
+        FROM users
+        WHERE id in (:desired_ids)
+        ON CONFLICT DO NOTHING
+      SQL
+    end
+  end
+
+  def update_ignored_users(usernames)
+    return unless guardian.can_ignore_users?
+
+    usernames ||= ""
+    desired_usernames = usernames.split(",").reject { |username| user.username == username }
+    desired_ids = User.where(username: desired_usernames).where(admin: false, moderator: false).pluck(:id)
+    if desired_ids.empty?
+      IgnoredUser.where(user_id: user.id).destroy_all
+    else
+      IgnoredUser.where('user_id = ? AND ignored_user_id not in (?)', user.id, desired_ids).destroy_all
+
+      # SQL is easier here than figuring out how to do the same in AR
+      DB.exec(<<~SQL, now: Time.now, user_id: user.id, desired_ids: desired_ids)
+        INSERT into ignored_users(user_id, ignored_user_id, created_at, updated_at)
+        SELECT :user_id, id, :now, :now
+        FROM users
+        WHERE id in (:desired_ids)
+        ON CONFLICT DO NOTHING
+      SQL
     end
   end
 

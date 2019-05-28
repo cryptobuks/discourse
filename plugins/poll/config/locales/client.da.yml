@@ -15,18 +15,16 @@ da:
         one: "afgiven stemme"
         other: "afgivne stemmer"
       average_rating: "Gennemsnitlig rating: <strong>%{average}</strong>."
-      public:
-        title: "Stemmer er offentlige."
       multiple:
         help:
           at_least_min_options:
-            one: "Vælg mindst <strong>1</strong> mulighed"
+            one: "Vælg mindst <strong>%{count}</strong> mulighed"
             other: "Vælg mindst <strong>%{count}</strong> muligheder"
           up_to_max_options:
-            one: "Vælg op til <strong>1</strong> mulighed"
+            one: "Vælg op til <strong>%{count}</strong> mulighed"
             other: "Vælg op til <strong>%{count}</strong> muligheder"
           x_options:
-            one: "Vælg <strong>1</strong> mulighed"
+            one: "Vælg <strong>%{count}</strong> mulighed"
             other: "Vælg <strong>%{count}</strong> muligheder"
           between_min_and_max_options: "Vælg imellem <strong>%{min}</strong> og <strong>%{max}</strong> valgmuligheder"
       cast-votes:
@@ -54,11 +52,14 @@ da:
         insert: Indsæt afstemning
         help:
           options_count: Vælg mindst 2 muligheder
+          invalid_values: Minimumsværdien skal være mindre end maksimumværdien.
         poll_type:
           label: Type
           regular: Enkelt valg
           multiple: Flere valg
           number: Nummerbedømmelse
+        poll_result:
+          label: Resultater
         poll_config:
           max: Maks
           min: Min
@@ -66,4 +67,4 @@ da:
         poll_public:
           label: Vis hvem der stemte
         poll_options:
-          label: Indtast en afstemning pr. linje
+          label: Indtast en valgmulighed per linje

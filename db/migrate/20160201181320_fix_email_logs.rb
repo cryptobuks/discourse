@@ -1,4 +1,6 @@
-class FixEmailLogs < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class FixEmailLogs < ActiveRecord::Migration[4.2]
   def up
     execute <<-SQL
       UPDATE email_logs

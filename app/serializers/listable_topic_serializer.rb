@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_dependency 'pinned_check'
 
 class ListableTopicSerializer < BasicTopicSerializer
@@ -22,9 +24,18 @@ class ListableTopicSerializer < BasicTopicSerializer
              :is_warning,
              :notification_level,
              :bookmarked,
-             :liked
+             :liked,
+             :unicode_title
 
   has_one :last_poster, serializer: BasicUserSerializer, embed: :objects
+
+  def include_unicode_title?
+    object.title.match?(/:[\w\-+]+:/)
+  end
+
+  def unicode_title
+    Emoji.gsub_emoji_to_unicode(object.title)
+  end
 
   def highest_post_number
     (scope.is_staff? && object.highest_staff_post_number) || object.highest_post_number
@@ -99,7 +110,7 @@ class ListableTopicSerializer < BasicTopicSerializer
   alias :include_new_posts? :has_user_data
 
   def include_excerpt?
-    pinned
+    pinned || SiteSetting.always_include_topic_excerpts
   end
 
   def pinned
@@ -112,8 +123,8 @@ class ListableTopicSerializer < BasicTopicSerializer
 
   protected
 
-    def unread_helper
-      @unread_helper ||= Unread.new(object, object.user_data, scope)
-    end
+  def unread_helper
+    @unread_helper ||= Unread.new(object, object.user_data, scope)
+  end
 
 end

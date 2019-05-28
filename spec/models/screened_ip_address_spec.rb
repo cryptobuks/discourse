@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe ScreenedIpAddress do
   let(:ip_address) { '99.232.23.124' }
-  let(:valid_params) { {ip_address: ip_address} }
+  let(:valid_params) { { ip_address: ip_address } }
 
   describe 'new record' do
     it 'sets a default action_type' do
@@ -30,6 +32,13 @@ describe ScreenedIpAddress do
       expect {
         described_class.new(valid_params.merge(action_name: nil))
       }.to raise_error(ArgumentError)
+    end
+
+    it 'returns a useful error if ip address matches an existing record' do
+      ScreenedIpAddress.create(ip_address: '2600:387:b:f::7a/128', action_name: :block)
+      r = ScreenedIpAddress.new(ip_address: '2600:387:b:f::7a', action_name: :block)
+      expect(r.save).to eq(false)
+      expect(r.errors[:ip_address]).to be_present
     end
   end
 
@@ -128,13 +137,13 @@ describe ScreenedIpAddress do
       end
 
       context 'using exact match' do
-        let!(:existing) { Fabricate(:screened_ip_address) }
+        fab!(:existing) { Fabricate(:screened_ip_address) }
         let(:ip_address_arg) { existing.ip_address }
         include_examples 'exact match of ip address'
       end
 
       context 'using subnet mask 255.255.255.0' do
-        let!(:existing) { Fabricate(:screened_ip_address, ip_address: '99.232.23.124/24') }
+        fab!(:existing) { Fabricate(:screened_ip_address, ip_address: '99.232.23.124/24') }
 
         context 'at exact address' do
           let(:ip_address_arg) { '99.232.23.124' }
@@ -246,7 +255,7 @@ describe ScreenedIpAddress do
       end
 
       context "use_admin_ip_whitelist is true" do
-        before { SiteSetting.stubs(:use_admin_ip_whitelist).returns(true) }
+        before { SiteSetting.use_admin_ip_whitelist = true }
 
         it "returns false when user is nil" do
           expect(described_class.block_admin_login?(nil, '123.12.12.12')).to eq(false)
@@ -277,7 +286,7 @@ describe ScreenedIpAddress do
       end
 
       context "use_admin_ip_whitelist is true" do
-        before { SiteSetting.stubs(:use_admin_ip_whitelist).returns(true) }
+        before { SiteSetting.use_admin_ip_whitelist = true }
 
         it "returns false when user is nil" do
           expect(described_class.block_admin_login?(nil, @permitted_ip_address)).to eq(false)

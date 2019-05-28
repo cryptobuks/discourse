@@ -1,7 +1,8 @@
+# frozen_string_literal: true
+
 require "mysql2"
 require File.expand_path(File.dirname(__FILE__) + "/base.rb")
 require 'htmlentities'
-
 
 # Before running this script, paste these lines into your shell,
 # then use arrow keys to edit the values
@@ -15,7 +16,6 @@ export IMPORT_AFTER="1970-01-01"
 export IMAGE_BASE="http://www.example.com/forum"
 export BASE="forum"
 =end
-
 
 class ImportScripts::MylittleforumSQL < ImportScripts::Base
 
@@ -35,11 +35,10 @@ class ImportScripts::MylittleforumSQL < ImportScripts::Base
   QUIET = true
 
   # Site settings
-  SiteSetting.disable_emails = true
+  SiteSetting.disable_emails = "non-staff"
   if FORCE_HOSTNAME
-    SiteSetting.force_hostname=FORCE_HOSTNAME
+    SiteSetting.force_hostname = FORCE_HOSTNAME
   end
-
 
   def initialize
 
@@ -57,7 +56,7 @@ class ImportScripts::MylittleforumSQL < ImportScripts::Base
         database: DB_NAME
       )
     rescue Exception => e
-      puts '='*50
+      puts '=' * 50
       puts e.message
       puts <<EOM
 Cannot log in to database.
@@ -98,8 +97,6 @@ EOM
   def import_users
     puts '', "creating users"
 
-    username = nil
-
     total_count = mysql_query("SELECT count(*) count FROM #{TABLE_PREFIX}userdata WHERE last_login > '#{IMPORT_AFTER}';").first['count']
 
     batches(BATCH_SIZE) do |offset|
@@ -125,7 +122,7 @@ EOM
 
       break if results.size < 1
 
-      next if all_records_exist? :users, results.map {|u| u['UserID'].to_i}
+      next if all_records_exist? :users, results.map { |u| u['UserID'].to_i }
 
       create_users(results, total: total_count, offset: offset) do |user|
         next if user['Email'].blank?
@@ -153,15 +150,15 @@ EOM
 
   def fix_username(username)
     olduser = username.dup
-    username.gsub!(/Dr\. /,"Dr") # no &
-    username.gsub!(/[ +!\/,*()?]/,"_") # can't have these
-    username.gsub!(/&/,"_and_") # no &
-    username.gsub!(/@/,"_at_") # no @
-    username.gsub!(/#/,"_hash_") # no &
-    username.gsub!(/\'/,"") # seriously?
-    username.gsub!(/[._]+/,"_") # can't have 2 special in a row
-    username.gsub!(/_+/,"_") # could result in dupes, but wtf?
-    username.gsub!(/_$/,"") # could result in dupes, but wtf?
+    username.gsub!(/Dr\. /, "Dr") # no &
+    username.gsub!(/[ +!\/,*()?]/, "_") # can't have these
+    username.gsub!(/&/, "_and_") # no &
+    username.gsub!(/@/, "_at_") # no @
+    username.gsub!(/#/, "_hash_") # no &
+    username.gsub!(/\'/, "") # seriously?
+    username.gsub!(/[._]+/, "_") # can't have 2 special in a row
+    username.gsub!(/_+/, "_") # could result in dupes, but wtf?
+    username.gsub!(/_$/, "") # could result in dupes, but wtf?
     if olduser != username
       print_warning ("#{olduser} --> #{username}")
     end
@@ -212,7 +209,7 @@ EOM
          OFFSET #{offset};")
 
       break if discussions.size < 1
-      next if all_records_exist? :posts, discussions.map {|t| "discussion#" + t['DiscussionID'].to_s}
+      next if all_records_exist? :posts, discussions.map { |t| "discussion#" + t['DiscussionID'].to_s }
 
       create_posts(discussions, total: total_count, offset: offset) do |discussion|
 
@@ -228,7 +225,7 @@ EOM
         {
           id: "discussion#" + discussion['DiscussionID'].to_s,
           user_id: user_id_from_imported_user_id(discussion['InsertUserID']) || Discourse::SYSTEM_USER_ID,
-          title: discussion['Name'].gsub('\\"','"'),
+          title: discussion['Name'].gsub('\\"', '"'),
           category: category_id_from_imported_category_id(discussion['CategoryID']),
           raw: raw,
           created_at: Time.zone.at(discussion['DateInserted']),
@@ -262,7 +259,7 @@ EOM
          OFFSET #{offset};")
 
       break if comments.size < 1
-      next if all_records_exist? :posts, comments.map {|comment| "comment#" + comment['CommentID'].to_s}
+      next if all_records_exist? :posts, comments.map { |comment| "comment#" + comment['CommentID'].to_s }
 
       create_posts(comments, total: total_count, offset: offset) do |comment|
         next unless t = topic_lookup_from_imported_post_id("discussion#" + comment['DiscussionID'].to_s)
@@ -288,9 +285,9 @@ EOM
     youtube_cooked = clean_up(youtube_raw.dup.to_s)
     # get just src from <iframe> and put on a line by itself
     re = /<iframe.+?src="(\S+?)".+?<\/iframe>/mix
-    youtube_cooked.gsub!(re) {"\n#{$1}\n"}
+    youtube_cooked.gsub!(re) { "\n#{$1}\n" }
     re = /<object.+?src="(\S+?)".+?<\/object>/mix
-    youtube_cooked.gsub!(re) {"\n#{$1}\n"}
+    youtube_cooked.gsub!(re) { "\n#{$1}\n" }
     youtube_cooked.gsub!(/^\/\//, "https://") # make sure it has a protocol
     unless /http/.match(youtube_cooked) # handle case of only youtube object number
       if youtube_cooked.length < 8 || /[<>=]/.match(youtube_cooked)
@@ -300,7 +297,7 @@ EOM
         youtube_cooked = 'https://www.youtube.com/watch?v=' + youtube_cooked
       end
     end
-    print_warning("#{'-'*40}\nBefore: #{youtube_raw}\nAfter: #{youtube_cooked}") unless QUIET
+    print_warning("#{'-' * 40}\nBefore: #{youtube_raw}\nAfter: #{youtube_cooked}") unless QUIET
 
     youtube_cooked
   end
@@ -312,8 +309,8 @@ EOM
     raw = @htmlentities.decode(raw)
 
     # don't \ quotes
-    raw = raw.gsub('\\"','"')
-    raw = raw.gsub("\\'","'")
+    raw = raw.gsub('\\"', '"')
+    raw = raw.gsub("\\'", "'")
 
     raw = raw.gsub(/\[b\]/i, "<strong>")
     raw = raw.gsub(/\[\/b\]/i, "</strong>")
@@ -324,12 +321,12 @@ EOM
     raw = raw.gsub(/\[u\]/i, "<em>")
     raw = raw.gsub(/\[\/u\]/i, "</em>")
 
-    raw = raw.gsub(/\[url\](\S+)\[\/url\]/im) { "#{$1}"}
-    raw = raw.gsub(/\[link\](\S+)\[\/link\]/im) { "#{$1}"}
+    raw = raw.gsub(/\[url\](\S+)\[\/url\]/im) { "#{$1}" }
+    raw = raw.gsub(/\[link\](\S+)\[\/link\]/im) { "#{$1}" }
 
     # URL & LINK with text
-    raw = raw.gsub(/\[url=(\S+?)\](.*?)\[\/url\]/im) { "<a href=\"#{$1}\">#{$2}</a>"}
-    raw = raw.gsub(/\[link=(\S+?)\](.*?)\[\/link\]/im) { "<a href=\"#{$1}\">#{$2}</a>"}
+    raw = raw.gsub(/\[url=(\S+?)\](.*?)\[\/url\]/im) { "<a href=\"#{$1}\">#{$2}</a>" }
+    raw = raw.gsub(/\[link=(\S+?)\](.*?)\[\/link\]/im) { "<a href=\"#{$1}\">#{$2}</a>" }
 
     # remote images
     raw = raw.gsub(/\[img\](https?:.+?)\[\/img\]/im) { "<img src=\"#{$1}\">" }
@@ -349,22 +346,22 @@ EOM
     raw.gsub(/\[postedby\](.+?)\[b\](.+?)\[\/b\]\[\/postedby\]/i) { "#{$1}@#{$2}" }
 
     # CODE (not tested)
-    raw = raw.gsub(/\[code\](\S+)\[\/code\]/im) { "```\n#{$1}\n```"}
-    raw = raw.gsub(/\[pre\](\S+)\[\/pre\]/im) { "```\n#{$1}\n```"}
+    raw = raw.gsub(/\[code\](\S+)\[\/code\]/im) { "```\n#{$1}\n```" }
+    raw = raw.gsub(/\[pre\](\S+)\[\/pre\]/im) { "```\n#{$1}\n```" }
 
     raw = raw.gsub(/(https:\/\/youtu\S+)/i) { "\n#{$1}\n" } #youtube links on line by themselves
 
     # no center
-    raw = raw.gsub(/\[\/?center\]/i,"")
+    raw = raw.gsub(/\[\/?center\]/i, "")
 
     # no size
-    raw = raw.gsub(/\[\/?size.*?\]/i,"")
+    raw = raw.gsub(/\[\/?size.*?\]/i, "")
 
     ### FROM VANILLA:
 
     # fix whitespaces
     raw = raw.gsub(/(\\r)?\\n/, "\n")
-             .gsub("\\t", "\t")
+      .gsub("\\t", "\t")
 
     unless CONVERT_HTML
       # replace all chevrons with HTML entities
@@ -372,12 +369,12 @@ EOM
       #  - AFTER all the "code" processing
       #  - BEFORE the "quote" processing
       raw = raw.gsub(/`([^`]+)`/im) { "`" + $1.gsub("<", "\u2603") + "`" }
-               .gsub("<", "&lt;")
-               .gsub("\u2603", "<")
+        .gsub("<", "&lt;")
+        .gsub("\u2603", "<")
 
       raw = raw.gsub(/`([^`]+)`/im) { "`" + $1.gsub(">", "\u2603") + "`" }
-               .gsub(">", "&gt;")
-               .gsub("\u2603", ">")
+        .gsub(">", "&gt;")
+        .gsub("\u2603", ">")
     end
 
     # Remove the color tag
@@ -404,7 +401,7 @@ EOM
     User.find_each do |u|
       ucf = u.custom_fields
       if ucf && ucf["import_id"] && ucf["import_username"]
-        Permalink.create( url: "#{BASE}/user-id-#{ucf['import_id']}.html", external_url: "/users/#{u.username}" ) rescue nil
+        Permalink.create(url: "#{BASE}/user-id-#{ucf['import_id']}.html", external_url: "/u/#{u.username}") rescue nil
         print '.'
       end
     end
@@ -416,12 +413,12 @@ EOM
         topic = post.topic
         id = pcf["import_id"].split('#').last
         if post.post_number == 1
-          Permalink.create( url: "#{BASE}/forum_entry-id-#{id}.html", topic_id: topic.id ) rescue nil
+          Permalink.create(url: "#{BASE}/forum_entry-id-#{id}.html", topic_id: topic.id) rescue nil
           unless QUIET
             print_warning("forum_entry-id-#{id}.html --> http://localhost:3000/t/#{topic.id}")
           end
         else
-          Permalink.create( url: "#{BASE}/forum_entry-id-#{id}.html", post_id: post.id ) rescue nil
+          Permalink.create(url: "#{BASE}/forum_entry-id-#{id}.html", post_id: post.id) rescue nil
           unless QUIET
             print_warning("forum_entry-id-#{id}.html --> http://localhost:3000/t/#{topic.id}/#{post.id}")
           end
@@ -437,7 +434,7 @@ EOM
       unless QUIET
         print_warning("forum-category-#{id}.html --> /t/#{cat.id}")
       end
-      Permalink.create( url: "#{BASE}/forum-category-#{id}.html", category_id: cat.id ) rescue nil
+      Permalink.create(url: "#{BASE}/forum-category-#{id}.html", category_id: cat.id) rescue nil
       print '.'
     end
   end
@@ -445,8 +442,6 @@ EOM
   def print_warning(message)
     $stderr.puts "#{message}"
   end
-
-
 
 end
 

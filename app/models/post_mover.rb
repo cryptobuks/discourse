@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class PostMover
   attr_reader :original_topic, :destination_topic, :user, :post_ids
 
@@ -5,33 +7,48 @@ class PostMover
     @move_types ||= Enum.new(:new_topic, :existing_topic)
   end
 
-  def initialize(original_topic, user, post_ids)
+  def initialize(original_topic, user, post_ids, move_to_pm: false)
     @original_topic = original_topic
     @user = user
     @post_ids = post_ids
+    @move_to_pm = move_to_pm
   end
 
-  def to_topic(id)
+  def to_topic(id, participants: nil)
     @move_type = PostMover.move_types[:existing_topic]
 
-    Topic.transaction do
-      move_posts_to Topic.find_by_id(id)
+    topic = Topic.find_by_id(id)
+    if topic.archetype != @original_topic.archetype &&
+       [@original_topic.archetype, topic.archetype].include?(Archetype.private_message)
+      raise Discourse::InvalidParameters
     end
+
+    Topic.transaction do
+      move_posts_to topic
+    end
+    add_allowed_users(participants) if participants.present? && @move_to_pm
+    topic
   end
 
-  def to_new_topic(title, category_id=nil)
+  def to_new_topic(title, category_id = nil, tags = nil)
     @move_type = PostMover.move_types[:new_topic]
 
     post = Post.find_by(id: post_ids.first)
     raise Discourse::InvalidParameters unless post
+    archetype = @move_to_pm ? Archetype.private_message : Archetype.default
 
     Topic.transaction do
-      move_posts_to Topic.create!(
+      new_topic = Topic.create!(
         user: post.user,
         title: title,
         category_id: category_id,
-        created_at: post.created_at
+        created_at: post.created_at,
+        archetype: archetype
       )
+      DiscourseTagging.tag_topic_by_names(new_topic, Guardian.new(user), tags)
+      move_posts_to new_topic
+      watch_new_topic
+      new_topic
     end
   end
 
@@ -47,7 +64,7 @@ class PostMover
     notify_users_that_posts_have_moved
     update_statistics
     update_user_actions
-    set_last_post_user_id(destination_topic)
+    update_last_post_stats
 
     if moving_all_posts
       @original_topic.update_status('closed', true, @user)
@@ -75,46 +92,87 @@ class PostMover
 
     posts.each do |post|
       post.is_first_post? ? create_first_post(post) : move(post)
+
+      if @move_to_pm && !destination_topic.topic_allowed_users.exists?(user_id: post.user_id)
+        destination_topic.topic_allowed_users.create!(user_id: post.user_id)
+      end
     end
 
-    PostReply.where("reply_id in (:post_ids) OR post_id in (:post_ids)", post_ids: post_ids).each do |post_reply|
+    PostReply.where("reply_id IN (:post_ids) OR post_id IN (:post_ids)", post_ids: post_ids).each do |post_reply|
       if post_reply.post && post_reply.reply && post_reply.reply.topic_id != post_reply.post.topic_id
-        PostReply.delete_all(reply_id: post_reply.reply.id, post_id: post_reply.post.id)
+        PostReply
+          .where(reply_id: post_reply.reply.id, post_id: post_reply.post.id)
+          .delete_all
       end
     end
   end
 
   def create_first_post(post)
-    p = PostCreator.create(
+    new_post = PostCreator.create(
       post.user,
       raw: post.raw,
       topic_id: destination_topic.id,
       acting_user: user,
-      skip_validations: true
+      cook_method: post.cook_method,
+      via_email: post.via_email,
+      raw_email: post.raw_email,
+      skip_validations: true,
+      created_at: post.created_at,
+      guardian: Guardian.new(user)
     )
-    p.update_column(:reply_count, @reply_count[1] || 0)
+
+    move_incoming_emails(post, new_post)
+    move_email_logs(post, new_post)
+
+    PostAction.copy(post, new_post)
+    new_post.update_column(:reply_count, @reply_count[1] || 0)
+    new_post.custom_fields = post.custom_fields
+    new_post.save_custom_fields
+
+    DiscourseEvent.trigger(:post_moved, new_post, original_topic.id)
+
+    new_post
   end
 
   def move(post)
     @first_post_number_moved ||= post.post_number
 
-    Post.where(id: post.id, topic_id: original_topic.id).update_all(
-      [
-        ['post_number = :post_number',
-         'reply_to_post_number = :reply_to_post_number',
-         'topic_id    = :topic_id',
-         'sort_order  = :post_number',
-         'reply_count = :reply_count',
-        ].join(', '),
-        reply_count: @reply_count[post.post_number] || 0,
-        post_number: @move_map[post.post_number],
-        reply_to_post_number: @move_map[post.reply_to_post_number],
-        topic_id: destination_topic.id
-      ]
-    )
+    update = {
+      reply_count: @reply_count[post.post_number] || 0,
+      post_number: @move_map[post.post_number],
+      reply_to_post_number: @move_map[post.reply_to_post_number],
+      topic_id: destination_topic.id,
+      sort_order: @move_map[post.post_number]
+    }
+
+    unless @move_map[post.reply_to_post_number]
+      update[:reply_to_user_id] = nil
+    end
+
+    post.attributes = update
+    post.save(validate: false)
+
+    move_incoming_emails(post, post)
+    move_email_logs(post, post)
+
+    DiscourseEvent.trigger(:post_moved, post, original_topic.id)
 
     # Move any links from the post to the new topic
     post.topic_links.update_all(topic_id: destination_topic.id)
+  end
+
+  def move_incoming_emails(old_post, new_post)
+    return if old_post.incoming_email.nil?
+
+    email = old_post.incoming_email
+    email.update_columns(topic_id: new_post.topic_id, post_id: new_post.id)
+    new_post.incoming_email = email
+  end
+
+  def move_email_logs(old_post, new_post)
+    EmailLog
+      .where(post_id: old_post.id)
+      .update_all(post_id: new_post.id)
   end
 
   def update_statistics
@@ -143,13 +201,22 @@ class PostMover
 
   def create_moderator_post_in_original_topic
     move_type_str = PostMover.move_types[@move_type].to_s
+    move_type_str.sub!("topic", "message") if @move_to_pm
 
+    message = I18n.with_locale(SiteSetting.default_locale) do
+      I18n.t(
+        "move_posts.#{move_type_str}_moderator_post",
+        count: posts.length,
+        topic_link: posts.first.is_first_post? ?
+          "[#{destination_topic.title}](#{destination_topic.relative_url})" :
+          "[#{destination_topic.title}](#{posts.first.url})"
+      )
+    end
+
+    post_type = @move_to_pm ? Post.types[:whisper] : Post.types[:small_action]
     original_topic.add_moderator_post(
-      user,
-      I18n.t("move_posts.#{move_type_str}_moderator_post",
-             count: post_ids.count,
-             topic_link: "[#{destination_topic.title}](#{destination_topic.relative_url})"),
-      post_type: Post.types[:small_action],
+      user, message,
+      post_type: post_type,
       action_code: "split_topic",
       post_number: @first_post_number_moved
     )
@@ -157,15 +224,56 @@ class PostMover
 
   def posts
     @posts ||= begin
-      Post.where(topic: @original_topic, id: post_ids).order(:created_at).tap do |posts|
+      Post.where(topic: @original_topic, id: post_ids)
+        .where.not(post_type: Post.types[:small_action])
+        .where.not(raw: '')
+        .order(:created_at).tap do |posts|
+
         raise Discourse::InvalidParameters.new(:post_ids) if posts.empty?
       end
     end
   end
 
-  def set_last_post_user_id(topic)
-    user_id = topic.posts.last.user_id rescue nil
-    return if user_id.nil?
-    topic.update_attribute :last_post_user_id, user_id
+  def update_last_post_stats
+    post = destination_topic.ordered_posts.where.not(post_type: Post.types[:whisper]).last
+    if post && post_ids.include?(post.id)
+      attrs = {}
+      attrs[:last_posted_at] = post.created_at
+      attrs[:last_post_user_id] = post.user_id
+      attrs[:bumped_at] = post.created_at unless post.no_bump
+      attrs[:updated_at] = Time.now
+      destination_topic.update_columns(attrs)
+    end
+  end
+
+  def watch_new_topic
+    if @destination_topic.archetype == Archetype.private_message
+      if @original_topic.archetype == Archetype.private_message
+        notification_levels = TopicUser.where(topic_id: @original_topic.id, user_id: posts.pluck(:user_id)).pluck(:user_id, :notification_level).to_h
+      else
+        notification_levels = posts.pluck(:user_id).uniq.map { |user_id| [user_id, TopicUser.notification_levels[:watching]] }.to_h
+      end
+    else
+      notification_levels = [[@destination_topic.user_id, TopicUser.notification_levels[:watching]]]
+    end
+
+    notification_levels.each do |user_id, notification_level|
+      TopicUser.change(
+        user_id,
+        @destination_topic.id,
+        notification_level: notification_level,
+        notifications_reason_id: TopicUser.notification_reasons[destination_topic.user_id == user_id ? :created_topic : :created_post]
+      )
+    end
+  end
+
+  def add_allowed_users(usernames)
+    return unless usernames.present?
+
+    names = usernames.split(',').flatten
+    User.where(username: names).find_each do |user|
+      destination_topic.topic_allowed_users.build(user_id: user.id) unless destination_topic.topic_allowed_users.where(user_id: user.id).exists?
+    end
+    destination_topic.save!
   end
 end

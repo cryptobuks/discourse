@@ -1,17 +1,20 @@
-class UserExport < ActiveRecord::Base
+# frozen_string_literal: true
 
-  def self.get_download_path(filename)
-    path = File.join(UserExport.base_directory, filename)
-    File.exists?(path) ? path : nil
+class UserExport < ActiveRecord::Base
+  belongs_to :user
+  belongs_to :upload, dependent: :destroy
+
+  around_destroy :ignore_missing_post_uploads
+
+  def ignore_missing_post_uploads
+    post_ids = upload.post_uploads.pluck(:post_id)
+    yield
+    post_ids.each { |post_id| PostCustomField.create!(post_id: post_id, name: Post::MISSING_UPLOADS_IGNORED, value: "t") }
   end
 
   def self.remove_old_exports
-    UserExport.where('created_at < ?', 2.days.ago).find_each do |expired_export|
-      file_name = "#{expired_export.file_name}-#{expired_export.id}.csv.gz"
-      file_path = "#{UserExport.base_directory}/#{file_name}"
-
-      File.delete(file_path) if File.exist?(file_path)
-      expired_export.destroy
+    UserExport.where('created_at < ?', 2.days.ago).find_each do |user_export|
+      user_export.destroy!
     end
   end
 
@@ -28,6 +31,7 @@ end
 #  id         :integer          not null, primary key
 #  file_name  :string           not null
 #  user_id    :integer          not null
-#  created_at :datetime
-#  updated_at :datetime
+#  created_at :datetime         not null
+#  updated_at :datetime         not null
+#  upload_id  :integer
 #

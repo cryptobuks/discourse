@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'discourse_plugin_registry'
 
@@ -29,6 +31,13 @@ describe DiscoursePluginRegistry do
     end
   end
 
+  context '#auth_providers' do
+    it 'defaults to an empty Set' do
+      registry.auth_providers = nil
+      expect(registry.auth_providers).to eq(Set.new)
+    end
+  end
+
   context '#admin_javascripts' do
     it 'defaults to an empty Set' do
       registry.admin_javascripts = nil
@@ -41,6 +50,22 @@ describe DiscoursePluginRegistry do
       registry.seed_data = nil
       expect(registry.seed_data).to be_a(Hash)
       expect(registry.seed_data.size).to eq(0)
+    end
+  end
+
+  context '.register_html_builder' do
+    it "can register and build html" do
+      DiscoursePluginRegistry.register_html_builder(:my_html) { "<b>my html</b>" }
+      expect(DiscoursePluginRegistry.build_html(:my_html)).to eq('<b>my html</b>')
+      DiscoursePluginRegistry.reset!
+      expect(DiscoursePluginRegistry.build_html(:my_html)).to be_blank
+    end
+
+    it "can register multiple builders" do
+      DiscoursePluginRegistry.register_html_builder(:my_html) { "one" }
+      DiscoursePluginRegistry.register_html_builder(:my_html) { "two" }
+      expect(DiscoursePluginRegistry.build_html(:my_html)).to eq("one\ntwo")
+      DiscoursePluginRegistry.reset!
     end
   end
 
@@ -73,6 +98,47 @@ describe DiscoursePluginRegistry do
 
     it "won't add the same file twice" do
       expect { registry_instance.register_js('hello.js') }.not_to change(registry.javascripts, :size)
+    end
+  end
+
+  context '.register_auth_provider' do
+    let(:registry) { DiscoursePluginRegistry }
+    let(:auth_provider) do
+      provider = Auth::AuthProvider.new
+      provider.authenticator = Auth::Authenticator.new
+      provider
+    end
+
+    before do
+      registry.register_auth_provider(auth_provider)
+    end
+
+    after do
+      registry.reset!
+    end
+
+    it 'is returned by DiscoursePluginRegistry.auth_providers' do
+      expect(registry.auth_providers.include?(auth_provider)).to eq(true)
+    end
+
+  end
+
+  context '.register_service_worker' do
+    let(:registry) { DiscoursePluginRegistry }
+
+    before do
+      registry.register_service_worker('hello.js')
+    end
+
+    after do
+      registry.reset!
+    end
+
+    it "should register the file once" do
+      2.times { registry.register_service_worker('hello.js') }
+
+      expect(registry.service_workers.size).to eq(1)
+      expect(registry.service_workers).to include('hello.js')
     end
   end
 
@@ -131,6 +197,13 @@ describe DiscoursePluginRegistry do
       registry.register_asset("my_admin.js", :admin)
 
       expect(registry.admin_javascripts.count).to eq(1)
+      expect(registry.javascripts.count).to eq(0)
+    end
+
+    it "registers vendored_core_pretty_text properly" do
+      registry.register_asset("my_lib.js", :vendored_core_pretty_text)
+
+      expect(registry.vendored_core_pretty_text.count).to eq(1)
       expect(registry.javascripts.count).to eq(0)
     end
   end

@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 class RegexSettingValidator
 
   LOREM = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam eget sem non elit tincidunt rhoncus.'.freeze
 
-  def initialize(opts={})
+  def initialize(opts = {})
     @opts = opts
   end
 

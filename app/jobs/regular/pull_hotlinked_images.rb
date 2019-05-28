@@ -1,20 +1,42 @@
+# frozen_string_literal: true
+
 require_dependency 'url_helper'
 require_dependency 'file_helper'
+require_dependency 'upload_creator'
 
 module Jobs
 
   class PullHotlinkedImages < Jobs::Base
-
     sidekiq_options queue: 'low'
 
     def initialize
-      # maximum size of the file in bytes
       @max_size = SiteSetting.max_image_size_kb.kilobytes
     end
 
-    def execute(args)
-      return unless SiteSetting.download_remote_images_to_local?
+    def download(src)
+      downloaded = nil
 
+      begin
+        retries ||= 3
+
+        downloaded = FileHelper.download(
+          src,
+          max_file_size: @max_size,
+          retain_on_max_file_size_exceeded: true,
+          tmp_file_name: "discourse-hotlinked",
+          follow_redirect: true
+        )
+      rescue
+        if (retries -= 1) > 0 && !Rails.env.test?
+          sleep 1
+          retry
+        end
+      end
+
+      downloaded
+    end
+
+    def execute(args)
       post_id = args[:post_id]
       raise Discourse::InvalidParameters.new(:post_id) unless post_id.present?
 
@@ -23,40 +45,66 @@ module Jobs
 
       raw = post.raw.dup
       start_raw = raw.dup
+
       downloaded_urls = {}
 
-      extract_images_from(post.cooked).each do |image|
-        src = original_src = image['src']
-        src = "http:" + src if src.start_with?("//")
+      large_images = JSON.parse(post.custom_fields[Post::LARGE_IMAGES].presence || "[]")
+      broken_images = JSON.parse(post.custom_fields[Post::BROKEN_IMAGES].presence || "[]")
+      downloaded_images = JSON.parse(post.custom_fields[Post::DOWNLOADED_IMAGES].presence || "{}")
 
-        if is_valid_image_url(src)
-          hotlinked = nil
+      has_new_large_image  = false
+      has_new_broken_image = false
+      has_downloaded_image = false
+
+      extract_images_from(post.cooked).each do |node|
+        src = original_src = node['src'] || node['href']
+        src = "#{SiteSetting.force_https ? "https" : "http"}:#{src}" if src.start_with?("//")
+
+        if should_download_image?(src)
           begin
             # have we already downloaded that file?
-            unless downloaded_urls.include?(src)
-              begin
-                hotlinked = FileHelper.download(src, @max_size, "discourse-hotlinked", true)
-              rescue Discourse::InvalidParameters
-              end
-              if hotlinked
+            schemeless_src = remove_scheme(original_src)
+
+            unless downloaded_images.include?(schemeless_src) || large_images.include?(schemeless_src) || broken_images.include?(schemeless_src)
+              if hotlinked = download(src)
                 if File.size(hotlinked.path) <= @max_size
                   filename = File.basename(URI.parse(src).path)
-                  upload = Upload.create_for(post.user_id, hotlinked, filename, File.size(hotlinked.path), { origin: src })
-                  downloaded_urls[src] = upload.url
+                  filename << File.extname(hotlinked.path) unless filename["."]
+                  upload = UploadCreator.new(hotlinked, filename, origin: src).create_for(post.user_id)
+                  if upload.persisted?
+                    downloaded_urls[src] = upload.url
+                    downloaded_images[remove_scheme(src)] = upload.id
+                    has_downloaded_image = true
+                  else
+                    log(:info, "Failed to pull hotlinked image for post: #{post_id}: #{src} - #{upload.errors.full_messages.join("\n")}")
+                  end
                 else
-                  Rails.logger.info("Failed to pull hotlinked image for post: #{post_id}: #{src} - Image is bigger than #{@max_size}")
+                  large_images << remove_scheme(original_src)
+                  has_new_large_image = true
                 end
               else
-                Rails.logger.error("There was an error while downloading '#{src}' locally for post: #{post_id}")
+                broken_images << remove_scheme(original_src)
+                has_new_broken_image = true
               end
             end
             # have we successfully downloaded that file?
             if downloaded_urls[src].present?
               url = downloaded_urls[src]
               escaped_src = Regexp.escape(original_src)
+
               # there are 6 ways to insert an image in a post
               # HTML tag - <img src="http://...">
               raw.gsub!(/src=["']#{escaped_src}["']/i, "src='#{url}'")
+
+              if (original_path = Upload.extract_url(original_src)&.to_s) &&
+                 Upload.extract_url(url)&.to_s
+
+                raw.gsub!(
+                  /src=["']\S*#{Regexp.escape(original_path)}["']/i,
+                  "src='#{url}'"
+                )
+              end
+
               # BBCode tag - [img]http://...[/img]
               raw.gsub!(/\[img\]#{escaped_src}\[\/img\]/i, "[img]#{url}[/img]")
               # Markdown linked image - [![alt](http://...)](http://...)
@@ -73,51 +121,74 @@ module Jobs
               raw.gsub!(/^#{escaped_src}(\s?)$/) { "<img src='#{url}'>#{$1}" }
             end
           rescue => e
-            Rails.logger.info("Failed to pull hotlinked image: #{src} post:#{post_id}\n" + e.message + "\n" + e.backtrace.join("\n"))
-          ensure
-            # close & delete the temp file
-            hotlinked && hotlinked.close!
+            log(:error, "Failed to pull hotlinked image (#{src}) post: #{post_id}\n" + e.message + "\n" + e.backtrace.join("\n"))
           end
         end
-
       end
 
+      large_images.uniq!
+      broken_images.uniq!
+
+      post.custom_fields[Post::LARGE_IMAGES]      = large_images.to_json      if large_images.present?
+      post.custom_fields[Post::BROKEN_IMAGES]     = broken_images.to_json     if broken_images.present?
+      post.custom_fields[Post::DOWNLOADED_IMAGES] = downloaded_images.to_json if downloaded_images.present?
+      # only save custom fields if there are any
+      post.save_custom_fields if large_images.present? || broken_images.present? || downloaded_images.present?
+
       post.reload
+
       if start_raw == post.raw && raw != post.raw
         changes = { raw: raw, edit_reason: I18n.t("upload.edit_reason") }
-        # we never want that job to bump the topic
-        options = { bypass_bump: true }
-        post.revise(Discourse.system_user, changes, options)
+        post.revise(Discourse.system_user, changes, bypass_bump: true)
+      elsif has_downloaded_image || has_new_large_image || has_new_broken_image
+        post.trigger_post_process(bypass_bump: true)
       end
     end
 
     def extract_images_from(html)
       doc = Nokogiri::HTML::fragment(html)
-      doc.css("img[src]") - doc.css(".onebox-result img") - doc.css("img.avatar")
+      doc.css("img[src], a.lightbox[href]") - doc.css("img.avatar") - doc.css(".lightbox img[src]")
     end
 
-    def is_valid_image_url(src)
+    def should_download_image?(src)
       # make sure we actually have a url
       return false unless src.present?
-      # we don't want to pull uploaded images
-      return false if Discourse.store.has_been_uploaded?(src)
-      # we don't want to pull relative images
-      return false if src =~ /\A\/[^\/]/i
+
+      # If file is on the forum or CDN domain
+      if Discourse.store.has_been_uploaded?(src) || src =~ /\A\/[^\/]/i
+        # Return true if we can't find the upload in the db
+        return !Upload.get_from_url(src)
+      end
+
+      # Don't download non-local images unless site setting enabled
+      return false unless SiteSetting.download_remote_images_to_local?
+
       # parse the src
       begin
         uri = URI.parse(src)
-      rescue URI::InvalidURIError
+      rescue URI::Error
         return false
       end
-      # we don't want to pull images hosted on the CDN (if we use one)
-      return false if Discourse.asset_host.present? && URI.parse(Discourse.asset_host).hostname == uri.hostname
-      return false if SiteSetting.s3_cdn_url.present? && URI.parse(SiteSetting.s3_cdn_url).hostname == uri.hostname
-      # we don't want to pull images hosted on the main domain
-      return false if URI.parse(Discourse.base_url_no_prefix).hostname == uri.hostname
+
+      hostname = uri.hostname
+      return false unless hostname
+
       # check the domains blacklist
       SiteSetting.should_download_images?(src)
     end
 
+    def log(log_level, message)
+      Rails.logger.public_send(
+        log_level,
+        "#{RailsMultisite::ConnectionManagement.current_db}: #{message}"
+      )
+    end
+
+    private
+
+    def remove_scheme(src)
+      src.sub(/^https?:/i, "")
+    end
   end
 
 end

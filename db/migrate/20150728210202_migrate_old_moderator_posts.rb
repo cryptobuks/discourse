@@ -1,4 +1,6 @@
-class MigrateOldModeratorPosts < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class MigrateOldModeratorPosts < ActiveRecord::Migration[4.2]
 
   def migrate_key(action_code)
     I18n.overrides_disabled do

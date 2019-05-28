@@ -1,4 +1,6 @@
-class MakeUrlColBiggerInPermalinks < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class MakeUrlColBiggerInPermalinks < ActiveRecord::Migration[4.2]
   def up
     remove_index :permalinks, :url
     change_column :permalinks, :url, :string, limit: 1000, null: false

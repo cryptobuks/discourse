@@ -113,6 +113,9 @@ el:
 en:
   name: English
   nativeName: English
+en_US:
+  name: English (United States)
+  nativeName: English (United States)
 eo:
   name: Esperanto
   nativeName: Esperanto
@@ -436,7 +439,7 @@ sk:
   nativeName: slovenčina
 sl:
   name: Slovene
-  nativeName: slovenski jezik
+  nativeName: slovenščina
 sm:
   name: Samoan
   nativeName: gagana fa'a Samoa

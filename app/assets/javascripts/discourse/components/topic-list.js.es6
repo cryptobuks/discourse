@@ -1,55 +1,63 @@
-import { observes } from 'ember-addons/ember-computed-decorators';
+import {
+  default as computed,
+  observes
+} from "ember-addons/ember-computed-decorators";
 
 export default Ember.Component.extend({
-  tagName: 'table',
-  classNames: ['topic-list'],
+  tagName: "table",
+  classNames: ["topic-list"],
   showTopicPostBadges: true,
+  listTitle: "topic.title",
 
-  _init: function(){
-    this.addObserver('hideCategory', this.rerender);
-    this.addObserver('order', this.rerender);
-    this.addObserver('ascending', this.rerender);
+  // Overwrite this to perform client side filtering of topics, if desired
+  filteredTopics: Ember.computed.alias("topics"),
+
+  _init: function() {
+    this.addObserver("hideCategory", this.rerender);
+    this.addObserver("order", this.rerender);
+    this.addObserver("ascending", this.rerender);
     this.refreshLastVisited();
-  }.on('init'),
+  }.on("init"),
 
-  toggleInTitle: function(){
-    return !this.get('bulkSelectEnabled') && this.get('canBulkSelect');
-  }.property('bulkSelectEnabled'),
+  @computed("bulkSelectEnabled")
+  toggleInTitle(bulkSelectEnabled) {
+    return !bulkSelectEnabled && this.canBulkSelect;
+  },
 
-  sortable: function(){
-    return !!this.get('changeSort');
-  }.property(),
+  @computed
+  sortable() {
+    return !!this.changeSort;
+  },
 
-  skipHeader: function() {
-    return this.site.mobileView;
-  }.property(),
+  skipHeader: Ember.computed.reads("site.mobileView"),
 
-  showLikes: function(){
-    return this.get('order') === "likes";
-  }.property('order'),
+  @computed("order")
+  showLikes(order) {
+    return order === "likes";
+  },
 
-  showOpLikes: function(){
-    return this.get('order') === "op_likes";
-  }.property('order'),
+  @computed("order")
+  showOpLikes(order) {
+    return order === "op_likes";
+  },
 
-  @observes('topics.[]')
+  @observes("topics.[]")
   topicsAdded() {
     // special case so we don't keep scanning huge lists
-    if (!this.get('lastVisitedTopic')) {
+    if (!this.lastVisitedTopic) {
       this.refreshLastVisited();
     }
   },
 
-  @observes('topics', 'order', 'ascending', 'category', 'top')
+  @observes("topics", "order", "ascending", "category", "top")
   lastVisitedTopicChanged() {
     this.refreshLastVisited();
   },
 
   _updateLastVisitedTopic(topics, order, ascending, top) {
+    this.set("lastVisitedTopic", null);
 
-    this.set('lastVisitedTopic', null);
-
-    if (!this.get('highlightLastVisited')) {
+    if (!this.highlightLastVisited) {
       return;
     }
 
@@ -69,25 +77,25 @@ export default Ember.Component.extend({
       return;
     }
 
-    let user = Discourse.User.current();
+    let user = this.currentUser;
     if (!user || !user.previous_visit_at) {
       return;
     }
 
     let lastVisitedTopic, topic;
 
-    let prevVisit = user.get('previousVisitAt');
+    let prevVisit = user.get("previousVisitAt");
 
     // this is more efficient cause we keep appending to list
     // work backwards
     let start = 0;
-    while(topics[start] && topics[start].get('pinned')) {
+    while (topics[start] && topics[start].get("pinned")) {
       start++;
     }
 
     let i;
-    for(i=topics.length-1;i>=start;i--){
-      if (topics[i].get('bumpedAt') > prevVisit) {
+    for (i = topics.length - 1; i >= start; i--) {
+      if (topics[i].get("bumpedAt") > prevVisit) {
         lastVisitedTopic = topics[i];
         break;
       }
@@ -99,42 +107,47 @@ export default Ember.Component.extend({
     }
 
     // end of list that was scanned
-    if (topic.get('bumpedAt') > prevVisit) {
+    if (topic.get("bumpedAt") > prevVisit) {
       return;
     }
 
-    this.set('lastVisitedTopic', lastVisitedTopic);
+    this.set("lastVisitedTopic", lastVisitedTopic);
   },
 
   refreshLastVisited() {
-    this._updateLastVisitedTopic(this.get('topics'), this.get('order'), this.get('ascending'), this.get('top'));
+    this._updateLastVisitedTopic(
+      this.topics,
+      this.order,
+      this.ascending,
+      this.top
+    );
   },
 
   click(e) {
     var self = this;
-    var onClick = function(sel, callback){
+    var onClick = function(sel, callback) {
       var target = $(e.target).closest(sel);
 
-      if(target.length === 1){
+      if (target.length === 1) {
         callback.apply(self, [target]);
       }
     };
 
-    onClick('button.bulk-select', function(){
-      this.sendAction('toggleBulkSelect');
+    onClick("button.bulk-select", function() {
+      this.toggleBulkSelect();
       this.rerender();
     });
 
-    onClick('button.bulk-select-all', function(){
-      $('input.bulk-select:not(:checked)').click();
+    onClick("button.bulk-select-all", function() {
+      $("input.bulk-select:not(:checked)").click();
     });
 
-    onClick('button.bulk-clear-all', function(){
-      $('input.bulk-select:checked').click();
+    onClick("button.bulk-clear-all", function() {
+      $("input.bulk-select:checked").click();
     });
 
-    onClick('th.sortable', function(e2){
-      this.sendAction('changeSort', e2.data('sort-order'));
+    onClick("th.sortable", function(e2) {
+      this.changeSort(e2.data("sort-order"));
       this.rerender();
     });
   }

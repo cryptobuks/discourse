@@ -1,4 +1,6 @@
-class MoveBioToUserProfiles < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class MoveBioToUserProfiles < ActiveRecord::Migration[4.2]
   def up
     add_column :user_profiles, :bio_raw, :text
     add_column :user_profiles, :bio_cooked, :text

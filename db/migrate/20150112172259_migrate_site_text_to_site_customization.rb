@@ -1,4 +1,6 @@
-class MigrateSiteTextToSiteCustomization < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class MigrateSiteTextToSiteCustomization < ActiveRecord::Migration[4.2]
 
   def up
     execute <<-SQL

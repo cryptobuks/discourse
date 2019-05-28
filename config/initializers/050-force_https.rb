@@ -1,7 +1,9 @@
+# frozen_string_literal: true
+
 # tiny middleware to force https if needed
 class Discourse::ForceHttpsMiddleware
 
-  def initialize(app, config={})
+  def initialize(app, config = {})
     @app = app
   end
 
@@ -11,4 +13,3 @@ class Discourse::ForceHttpsMiddleware
   end
 
 end
-

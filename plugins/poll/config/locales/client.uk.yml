@@ -11,13 +11,15 @@ uk:
       total_votes:
         one: "голос"
         few: "голосів"
+        many: "голоси"
         other: "голоси"
       average_rating: "Середній рейтинг: <strong>%{average}</strong>."
       multiple:
         help:
           at_least_min_options:
-            one: "Виберіть хоча б <strong>1</strong> варіант"
+            one: "Виберіть хоча б <strong>%{count}</strong> варіант"
             few: "Виберіть хоча б <strong>%{count}</strong> варіантів"
+            many: "Виберіть хоча б <strong>%{count}</strong> варіанти"
             other: "Виберіть хоча б <strong>%{count}</strong> варіанти"
       cast-votes:
         label: "Проголосувати!"
@@ -32,6 +34,8 @@ uk:
       ui_builder:
         poll_type:
           label: Тип
+        poll_result:
+          label: Результати
         poll_config:
           max: Макс
           min: Мін

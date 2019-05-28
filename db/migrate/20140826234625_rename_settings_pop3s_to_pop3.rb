@@ -1,4 +1,6 @@
-class RenameSettingsPop3sToPop3 < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class RenameSettingsPop3sToPop3 < ActiveRecord::Migration[4.2]
   def up
     execute "UPDATE site_settings SET name = replace(name, 'pop3s', 'pop3') WHERE name ILIKE 'pop3%'"
   end

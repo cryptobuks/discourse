@@ -1,15 +1,20 @@
+# frozen_string_literal: true
+
 require_dependency 'wizard/step'
 require_dependency 'wizard/field'
 require_dependency 'wizard/step_updater'
 require_dependency 'wizard/builder'
 
 class Wizard
+
   attr_reader :steps, :user
+  attr_accessor :max_topics_to_require_completion
 
   def initialize(user)
     @steps = []
     @user = user
     @first_step = nil
+    @max_topics_to_require_completion = 15
   end
 
   def create_step(step_name)
@@ -76,13 +81,20 @@ class Wizard
 
   def requires_completion?
     return false unless SiteSetting.wizard_enabled?
+    return false if SiteSetting.bypass_wizard_check?
 
-    first_admin = User.where(admin: true)
-                      .where.not(id: Discourse.system_user.id)
-                      .joins(:user_auth_tokens)
-                      .order('user_auth_tokens.created_at')
+    if Topic.limit(@max_topics_to_require_completion + 1).count > @max_topics_to_require_completion
+      SiteSetting.bypass_wizard_check = true
+      return false
+    end
 
-    if @user.present? && first_admin.first == @user && (Topic.count < 15)
+    first_admin_id = User.where(admin: true)
+      .human_users
+      .joins(:user_auth_tokens)
+      .order('user_auth_tokens.created_at')
+      .pluck(:id).first
+
+    if @user&.id && first_admin_id == @user.id
       !Wizard::Builder.new(@user).build.completed?
     else
       false

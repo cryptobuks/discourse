@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'open-uri'
 
 class Typepad < Thor
@@ -12,7 +14,7 @@ class Typepad < Thor
 
     backup_settings = {}
     %w(email_domains_blacklist).each do |s|
-      backup_settings[s] = SiteSetting.send(s)
+      backup_settings[s] = SiteSetting.get(s)
     end
 
     user = User.where(username_lower: options[:post_as].downcase).first
@@ -26,26 +28,25 @@ class Typepad < Thor
       exit 1
     end
 
-    inside_block = true
-    entry = ""
+    input = ""
 
     entries = []
     File.open(options[:file]).each_line do |l|
       l = l.scrub
 
       if l =~ /^--------$/
-        parsed_entry = process_entry(entry)
+        parsed_entry = process_entry(input)
         if parsed_entry
           puts "Parsed #{parsed_entry[:title]}"
           entries << parsed_entry
         end
-        entry = ""
+        input = ""
       else
-        entry << l
+        input << l
       end
     end
 
-    entries.each_with_index do |e,i|
+    entries.each_with_index do |e, i|
       if e[:title] =~ /Head/
         puts "#{i}: #{e[:title]}"
       end
@@ -55,8 +56,9 @@ class Typepad < Thor
     SiteSetting.email_domains_blacklist = ""
 
     puts "Importing #{entries.size} entries"
+
     entries.each_with_index do |entry, idx|
-      puts "Importing (#{idx+1}/#{entries.size})"
+      puts "Importing (#{idx + 1}/#{entries.size})"
       next if entry[:body].blank?
 
       puts entry[:unique_url]
@@ -102,7 +104,7 @@ class Typepad < Thor
   ensure
     RateLimiter.enable
     backup_settings.each do |s, v|
-      SiteSetting.send("#{s}=", v)
+      SiteSetting.set(s, v)
     end
   end
 
@@ -219,7 +221,7 @@ class Typepad < Thor
                 current << c
               end
             end
-            segments.delete_if {|s| s.nil? || s.size < 2}
+            segments.delete_if { |segment| segment.nil? || segment.size < 2 }
             segments << current
 
             comment[:author] = segments[0]

@@ -2,12 +2,13 @@
 //= require ./pretty-text/guid
 //= require ./pretty-text/censored-words
 //= require ./pretty-text/emoji/data
+//= require ./pretty-text/emoji/version
 //= require ./pretty-text/emoji
-//= require ./pretty-text/engines/discourse-markdown
-//= require_tree ./pretty-text/engines/discourse-markdown
+//= require ./pretty-text/engines/discourse-markdown-it
 //= require xss.min
-//= require better_markdown.js
 //= require ./pretty-text/xss
 //= require ./pretty-text/white-lister
 //= require ./pretty-text/sanitizer
 //= require ./pretty-text/oneboxer
+//= require ./pretty-text/inline-oneboxer
+//= require ./pretty-text/image-short-url

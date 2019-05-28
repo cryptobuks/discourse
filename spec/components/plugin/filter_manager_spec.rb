@@ -1,15 +1,17 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require_dependency 'plugin/filter_manager'
 
 describe Plugin::FilterManager do
-  let(:instance){ Plugin::FilterManager.new }
+  let(:instance) { Plugin::FilterManager.new }
 
   it "calls registered filters correctly" do
-    instance.register(:added_numbers) do |context,result|
+    instance.register(:added_numbers) do |context, result|
       context + result + 1
     end
 
-    instance.register(:added_numbers) do |context,result|
+    instance.register(:added_numbers) do |context, result|
       context + result + 2
     end
 

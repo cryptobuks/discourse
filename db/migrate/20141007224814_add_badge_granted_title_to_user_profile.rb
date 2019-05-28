@@ -1,4 +1,6 @@
-class AddBadgeGrantedTitleToUserProfile < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class AddBadgeGrantedTitleToUserProfile < ActiveRecord::Migration[4.2]
   def up
     add_column :user_profiles, :badge_granted_title, :boolean, default: false
 

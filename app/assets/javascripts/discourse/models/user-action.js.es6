@@ -1,9 +1,9 @@
-import RestModel from 'discourse/models/rest';
-import { url } from 'discourse/lib/computed';
-import { on } from 'ember-addons/ember-computed-decorators';
-import computed from 'ember-addons/ember-computed-decorators';
-import UserActionGroup from 'discourse/models/user-action-group';
-import { postUrl } from 'discourse/lib/utilities';
+import RestModel from "discourse/models/rest";
+import { on } from "ember-addons/ember-computed-decorators";
+import computed from "ember-addons/ember-computed-decorators";
+import UserActionGroup from "discourse/models/user-action-group";
+import { postUrl } from "discourse/lib/utilities";
+import { userPath } from "discourse/lib/url";
 
 const UserActionTypes = {
   likes_given: 1,
@@ -21,102 +21,114 @@ const UserActionTypes = {
 };
 const InvertedActionTypes = {};
 
-_.each(UserActionTypes, (k, v) => {
-  InvertedActionTypes[k] = v;
-});
+Object.keys(UserActionTypes).forEach(
+  k => (InvertedActionTypes[k] = UserActionTypes[k])
+);
 
 const UserAction = RestModel.extend({
-
   @on("init")
   _attachCategory() {
-    const categoryId = this.get('category_id');
+    const categoryId = this.category_id;
     if (categoryId) {
-      this.set('category', Discourse.Category.findById(categoryId));
+      this.set("category", Discourse.Category.findById(categoryId));
     }
   },
 
   @computed("action_type")
   descriptionKey(action) {
     if (action === null || UserAction.TO_SHOW.indexOf(action) >= 0) {
-      if (this.get('isPM')) {
-        return this.get('sameUser') ? 'sent_by_you' : 'sent_by_user';
+      if (this.isPM) {
+        return this.sameUser ? "sent_by_you" : "sent_by_user";
       } else {
-        return this.get('sameUser') ? 'posted_by_you' : 'posted_by_user';
+        return this.sameUser ? "posted_by_you" : "posted_by_user";
       }
     }
 
-    if (this.get('topicType')) {
-      return this.get('sameUser') ? 'you_posted_topic' : 'user_posted_topic';
+    if (this.topicType) {
+      return this.sameUser ? "you_posted_topic" : "user_posted_topic";
     }
 
-    if (this.get('postReplyType')) {
-      if (this.get('reply_to_post_number')) {
-        return this.get('sameUser') ? 'you_replied_to_post' : 'user_replied_to_post';
+    if (this.postReplyType) {
+      if (this.reply_to_post_number) {
+        return this.sameUser ? "you_replied_to_post" : "user_replied_to_post";
       } else {
-        return this.get('sameUser') ? 'you_replied_to_topic' : 'user_replied_to_topic';
+        return this.sameUser ? "you_replied_to_topic" : "user_replied_to_topic";
       }
     }
 
-    if (this.get('mentionType')) {
-      if (this.get('sameUser')) {
-        return 'you_mentioned_user';
+    if (this.mentionType) {
+      if (this.sameUser) {
+        return "you_mentioned_user";
       } else {
-        return this.get('targetUser') ? 'user_mentioned_you' : 'user_mentioned_user';
+        return this.targetUser ? "user_mentioned_you" : "user_mentioned_user";
       }
     }
   },
 
   @computed("username")
   sameUser(username) {
-    return username === Discourse.User.currentProp('username');
+    return username === Discourse.User.currentProp("username");
   },
 
   @computed("target_username")
   targetUser(targetUsername) {
-    return targetUsername === Discourse.User.currentProp('username');
+    return targetUsername === Discourse.User.currentProp("username");
   },
 
-  presentName: Ember.computed.or('name', 'username'),
-  targetDisplayName: Ember.computed.or('target_name', 'target_username'),
-  actingDisplayName: Ember.computed.or('acting_name', 'acting_username'),
-  targetUserUrl: url('target_username', '/users/%@'),
+  presentName: Ember.computed.or("name", "username"),
+  targetDisplayName: Ember.computed.or("target_name", "target_username"),
+  actingDisplayName: Ember.computed.or("acting_name", "acting_username"),
+
+  @computed("target_username")
+  targetUserUrl(username) {
+    return userPath(username);
+  },
 
   @computed("username")
   usernameLower(username) {
     return username.toLowerCase();
   },
 
-  userUrl: url('usernameLower', '/users/%@'),
+  @computed("usernameLower")
+  userUrl(usernameLower) {
+    return userPath(usernameLower);
+  },
 
   @computed()
   postUrl() {
-    return postUrl(this.get('slug'), this.get('topic_id'), this.get('post_number'));
+    return postUrl(this.slug, this.topic_id, this.post_number);
   },
 
   @computed()
   replyUrl() {
-    return postUrl(this.get('slug'), this.get('topic_id'), this.get('reply_to_post_number'));
+    return postUrl(this.slug, this.topic_id, this.reply_to_post_number);
   },
 
-  replyType: Em.computed.equal('action_type', UserActionTypes.replies),
-  postType: Em.computed.equal('action_type', UserActionTypes.posts),
-  topicType: Em.computed.equal('action_type', UserActionTypes.topics),
-  bookmarkType: Em.computed.equal('action_type', UserActionTypes.bookmarks),
-  messageSentType: Em.computed.equal('action_type', UserActionTypes.messages_sent),
-  messageReceivedType: Em.computed.equal('action_type', UserActionTypes.messages_received),
-  mentionType: Em.computed.equal('action_type', UserActionTypes.mentions),
-  isPM: Em.computed.or('messageSentType', 'messageReceivedType'),
-  postReplyType: Em.computed.or('postType', 'replyType'),
-  removableBookmark: Em.computed.and('bookmarkType', 'sameUser'),
+  replyType: Ember.computed.equal("action_type", UserActionTypes.replies),
+  postType: Ember.computed.equal("action_type", UserActionTypes.posts),
+  topicType: Ember.computed.equal("action_type", UserActionTypes.topics),
+  bookmarkType: Ember.computed.equal("action_type", UserActionTypes.bookmarks),
+  messageSentType: Ember.computed.equal(
+    "action_type",
+    UserActionTypes.messages_sent
+  ),
+  messageReceivedType: Ember.computed.equal(
+    "action_type",
+    UserActionTypes.messages_received
+  ),
+  mentionType: Ember.computed.equal("action_type", UserActionTypes.mentions),
+  isPM: Ember.computed.or("messageSentType", "messageReceivedType"),
+  postReplyType: Ember.computed.or("postType", "replyType"),
+  removableBookmark: Ember.computed.and("bookmarkType", "sameUser"),
 
   addChild(action) {
-    let groups = this.get("childGroups");
+    let groups = this.childGroups;
     if (!groups) {
       groups = {
-        likes: UserActionGroup.create({ icon: "fa fa-heart" }),
-        stars: UserActionGroup.create({ icon: "fa fa-star" }),
-        edits: UserActionGroup.create({ icon: "fa fa-pencil" }),
-        bookmarks: UserActionGroup.create({ icon: "fa fa-bookmark" })
+        likes: UserActionGroup.create({ icon: "heart" }),
+        stars: UserActionGroup.create({ icon: "star" }),
+        edits: UserActionGroup.create({ icon: "pencil-alt" }),
+        bookmarks: UserActionGroup.create({ icon: "bookmark" })
       };
     }
     this.set("childGroups", groups);
@@ -138,8 +150,19 @@ const UserAction = RestModel.extend({
     }
   },
 
-  children: function() {
-    const g = this.get("childGroups");
+  @computed(
+    "childGroups",
+    "childGroups.likes.items",
+    "childGroups.likes.items.[]",
+    "childGroups.stars.items",
+    "childGroups.stars.items.[]",
+    "childGroups.edits.items",
+    "childGroups.edits.items.[]",
+    "childGroups.bookmarks.items",
+    "childGroups.bookmarks.items.[]"
+  )
+  children() {
+    const g = this.childGroups;
     let rval = [];
     if (g) {
       rval = [g.likes, g.stars, g.edits, g.bookmarks].filter(function(i) {
@@ -147,16 +170,12 @@ const UserAction = RestModel.extend({
       });
     }
     return rval;
-  }.property("childGroups",
-    "childGroups.likes.items", "childGroups.likes.items.[]",
-    "childGroups.stars.items", "childGroups.stars.items.[]",
-    "childGroups.edits.items", "childGroups.edits.items.[]",
-    "childGroups.bookmarks.items", "childGroups.bookmarks.items.[]"),
+  },
 
   switchToActing() {
     this.setProperties({
-      username: this.get('acting_username'),
-      name: this.get('actingDisplayName')
+      username: this.acting_username,
+      name: this.actingDisplayName
     });
   }
 });
@@ -171,7 +190,6 @@ UserAction.reopenClass({
       const key = "" + item.topic_id + "-" + item.post_number;
       const found = uniq[key];
       if (found === void 0) {
-
         let current;
         if (UserAction.TO_COLLAPSE.indexOf(item.action_type) >= 0) {
           current = UserAction.create(item);
@@ -188,7 +206,9 @@ UserAction.reopenClass({
           item.switchToActing();
           collapsed[found].addChild(item);
         } else {
-          collapsed[found].setProperties(item.getProperties('action_type', 'description'));
+          collapsed[found].setProperties(
+            item.getProperties("action_type", "description")
+          );
         }
       }
     });
@@ -213,7 +233,6 @@ UserAction.reopenClass({
     UserActionTypes.messages_sent,
     UserActionTypes.messages_received
   ]
-
 });
 
 export default UserAction;

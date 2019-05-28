@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class GlobalSetting
 
   def self.register(key, default)
@@ -6,12 +8,12 @@ class GlobalSetting
     end
   end
 
-  VALID_SECRET_KEY = /^[0-9a-f]{128}$/
+  VALID_SECRET_KEY ||= /^[0-9a-f]{128}$/
   # this is named SECRET_TOKEN as opposed to SECRET_KEY_BASE
   # for legacy reasons
-  REDIS_SECRET_KEY = 'SECRET_TOKEN'
+  REDIS_SECRET_KEY ||= 'SECRET_TOKEN'
 
-  REDIS_VALIDATE_SECONDS = 30
+  REDIS_VALIDATE_SECONDS ||= 30
 
   # In Rails secret_key_base is used to encrypt the cookie store
   # the cookie store contains session data
@@ -40,7 +42,7 @@ class GlobalSetting
         token = $redis.without_namespace.get(REDIS_SECRET_KEY)
         unless token && token =~ VALID_SECRET_KEY
           token = SecureRandom.hex(64)
-          $redis.without_namespace.set(REDIS_SECRET_KEY,token)
+          $redis.without_namespace.set(REDIS_SECRET_KEY, token)
         end
       end
       if !secret_key_base.blank? && token != secret_key_base
@@ -48,6 +50,8 @@ class GlobalSetting
       end
       token
     end
+  rescue Redis::CommandError => e
+    @safe_secret_key_base = SecureRandom.hex(64) if e.message =~ /READONLY/
   end
 
   def self.load_defaults
@@ -73,10 +77,43 @@ class GlobalSetting
     end
   end
 
+  def self.use_s3?
+    (@use_s3 ||=
+      begin
+        s3_bucket &&
+        s3_region && (
+          s3_use_iam_profile || (s3_access_key_id && s3_secret_access_key)
+        ) ? :true : :false
+      end) == :true
+  end
+
+  def self.s3_bucket_name
+    @s3_bucket_name ||= s3_bucket.downcase.split("/")[0]
+  end
+
+  # for testing
+  def self.reset_s3_cache!
+    @use_s3 = nil
+  end
+
   def self.database_config
-    hash = {"adapter" => "postgresql"}
-    %w{pool timeout socket host port username password replica_host replica_port}.each do |s|
-      if val = self.send("db_#{s}")
+    hash = { "adapter" => "postgresql" }
+
+    %w{
+      pool
+      connect_timeout
+      timeout
+      socket
+      host
+      backup_host
+      port
+      backup_port
+      username
+      password
+      replica_host
+      replica_port
+    }.each do |s|
+      if val = self.public_send("db_#{s}")
         hash[s] = val
       end
     end
@@ -86,12 +123,14 @@ class GlobalSetting
     hostnames = [ hostname ]
     hostnames << backup_hostname if backup_hostname.present?
 
+    hostnames << URI.parse(cdn_url).host if cdn_url.present?
+
     hash["host_names"] = hostnames
     hash["database"] = db_name
 
     hash["prepared_statements"] = !!self.db_prepared_statements
 
-    {"production" => hash}
+    { "production" => hash }
   end
 
   # For testing purposes
@@ -115,16 +154,18 @@ class GlobalSetting
         c[:password] = redis_password if redis_password.present?
         c[:db] = redis_db if redis_db != 0
         c[:db] = 1 if Rails.env == "test"
-
-        if redis_sentinels.present?
-          c[:sentinels] = redis_sentinels.split(",").map do |address|
-            host,port = address.split(":")
-            {host: host, port: port}
-          end.to_a
-        end
+        c[:id] = nil if redis_skip_client_commands
 
         c.freeze
       end
+  end
+
+  def self.add_default(name, default)
+    unless self.respond_to? name
+      define_singleton_method(name) do
+        default
+      end
+    end
   end
 
   class BaseProvider
@@ -133,7 +174,6 @@ class GlobalSetting
       return $1.to_i if setting.to_s.strip =~ /^([0-9]+)$/
       setting
     end
-
 
     def resolve(current, default)
       BaseProvider.coerce(
@@ -167,8 +207,7 @@ class GlobalSetting
       end
     end
 
-
-    def lookup(key,default)
+    def lookup(key, default)
       var = @data[key]
       resolve(var, var.nil? ? default : "")
     end
@@ -188,17 +227,21 @@ class GlobalSetting
 
   class EnvProvider < BaseProvider
     def lookup(key, default)
-      var = ENV["DISCOURSE_" << key.to_s.upcase]
+      var = ENV["DISCOURSE_" + key.to_s.upcase]
       resolve(var , var.nil? ? default : nil)
     end
 
     def keys
-      ENV.keys.select{|k| k =~ /^DISCOURSE_/}.map{|k| k[10..-1].downcase.to_sym}
+      ENV.keys.select { |k| k =~ /^DISCOURSE_/ }.map { |k| k[10..-1].downcase.to_sym }
     end
   end
 
   class BlankProvider < BaseProvider
     def lookup(key, default)
+
+      if key == :redis_port
+        return ENV["DISCOURSE_REDIS_PORT"] if ENV["DISCOURSE_REDIS_PORT"]
+      end
       default
     end
 
@@ -206,7 +249,6 @@ class GlobalSetting
       []
     end
   end
-
 
   class << self
     attr_accessor :provider

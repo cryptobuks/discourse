@@ -1,4 +1,6 @@
-class RemoveNullableDates < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class RemoveNullableDates < ActiveRecord::Migration[4.2]
   def up
 
     # must drop so we can muck with the column

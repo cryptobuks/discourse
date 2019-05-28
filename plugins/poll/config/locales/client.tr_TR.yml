@@ -9,19 +9,29 @@ tr_TR:
   js:
     poll:
       voters:
-        other: "oylayan"
+        one: "oylayan"
+        other: "oylayanlar"
       total_votes:
+        one: "toplam oy"
         other: "toplam oy"
       average_rating: "Ortalama oran: <strong>%{average}</strong>."
       public:
-        title: "Oylar herkese açık."
+        title: "Oylar <strong>halka açıktır</strong>."
+      results:
+        vote:
+          title: "Sonuçlar <strong>oylamada</strong> gösterilecektir."
+        closed:
+          title: "Sonuçlar oylama <strong>kapatıldıktan</strong> sonra gösterilecektir."
       multiple:
         help:
           at_least_min_options:
+            one: "En az <strong>%{count}</strong> seçecek seçiniz"
             other: "En az <strong>%{count}</strong> seçecek seçiniz"
           up_to_max_options:
+            one: "<strong>%{count}</strong> seçeneğe kadar seçebilirsiniz"
             other: "<strong>%{count}</strong> seçeneğe kadar seçebilirsiniz"
           x_options:
+            one: "<strong>%{count}</strong>  seçenek seçiniz"
             other: "<strong>%{count}</strong>  seçenek seçiniz"
           between_min_and_max_options: "<strong>%{min}</strong> ve <strong>%{max}</strong> arasında seçenek seçiniz"
       cast-votes:
@@ -41,6 +51,9 @@ tr_TR:
         title: "Anketi bitir"
         label: "Bitir"
         confirm: "Bu anketi bitirmek istediğinize emin misiniz?"
+      automatic_close:
+        closes_in: "Kapatılmasına zaman <strong>%{timeLeft}</strong>"
+        age: "<strong>%{age}</strong> kapanmış."
       error_while_toggling_status: "Üzgünüz, anket durumunu değiştirme sırasında hata meydana geldi."
       error_while_casting_votes: "Üzgünüz, oylarınızı dönüştürme sırasında hata meydana geldi."
       error_while_fetching_voters: "Üzgünüz, oy verenleri görüntüleme sırasında hata meydana geldi"
@@ -49,11 +62,18 @@ tr_TR:
         insert: Anket Ekle
         help:
           options_count: En az 2 seçenek ekleyin
+          invalid_values: Minimum değer maksimum değerden küçük olmalıdır.
+          min_step_value: Minimum adım değeri 1
         poll_type:
           label: Tür
           regular: Tekli seçim
           multiple: Çoklu Seçim
           number: Sayısal Değerlendirme
+        poll_result:
+          label: Sonuçlar
+          always: Her zaman görünür
+          vote: Oylamada
+          closed: Kapatıldığında
         poll_config:
           max: En fazla
           min: En az
@@ -62,3 +82,5 @@ tr_TR:
           label: Kimlerin oy verdiğini göster
         poll_options:
           label: Her satıra bir anket seçeneği girin
+        automatic_close:
+          label: Seçimi otomatik olarak kapat

@@ -1,4 +1,6 @@
-class RenameTotalVotesToVoters < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class RenameTotalVotesToVoters < ActiveRecord::Migration[4.2]
 
   def up
     PostCustomField.where(name: "polls").find_each do |pcf|

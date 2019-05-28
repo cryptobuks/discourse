@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Ember
   module Handlebars
     class Template
@@ -13,4 +15,3 @@ module Ember
     end
   end
 end
-

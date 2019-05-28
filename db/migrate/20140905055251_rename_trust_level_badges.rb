@@ -1,4 +1,6 @@
-class RenameTrustLevelBadges < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class RenameTrustLevelBadges < ActiveRecord::Migration[4.2]
 
   def rename(id, old, new)
     execute "UPDATE badges SET name = '#{new}' WHERE name = '#{old}' AND id = #{id}"

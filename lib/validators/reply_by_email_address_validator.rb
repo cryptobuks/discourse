@@ -1,14 +1,23 @@
+# frozen_string_literal: true
+
 class ReplyByEmailAddressValidator
-  def initialize(opts={})
+  def initialize(opts = {})
     @opts = opts
   end
 
   def valid_value?(val)
-    return true if val.blank?
+    return true  if val.blank?
+    return false if !val.include?("@")
 
-    !!val["@"] &&
-    !!val["%{reply_key}"] &&
-    val.gsub(/\+?%{reply_key}/, "") != SiteSetting.notification_email
+    value = val.dup
+    value.strip!
+
+    if SiteSetting.find_related_post_with_key
+      return false if !value.include?("%{reply_key}")
+      value.sub!(/\+?%{reply_key}/, "")
+    end
+
+    value != SiteSetting.notification_email && !value.include?(" ")
   end
 
   def error_message

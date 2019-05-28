@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # session that is not stored in cookie, expires after 1.hour unconditionally
 class SecureSession
   def initialize(prefix)
@@ -8,7 +10,7 @@ class SecureSession
     $redis.get("#{@prefix}#{key}")
   end
 
-  def []=(key,val)
+  def []=(key, val)
     if val == nil
       $redis.del("#{@prefix}#{key}")
     else

@@ -1,0 +1,242 @@
+# encoding: utf-8
+#
+# Never edit this file. It will be overwritten when translations are pulled from Transifex.
+#
+# To work with us on translations, join this project:
+# https://www.transifex.com/projects/p/discourse-org/
+
+he:
+  site_settings:
+    discourse_narrative_bot_enabled: 'הפעלת בוט העלילות של Discourse‏ (discobot)'
+    disable_discourse_narrative_bot_welcome_post: "נטרול פוסט קבלת הפנים מאת בוט העלילות של Discourse"
+    discourse_narrative_bot_ignored_usernames: "שמות משתמשים שבוט העלילות של Discourse צריך להתעלם מהם"
+    discourse_narrative_bot_disable_public_replies: "byruk תגובות ציבוריות מאת בוט העלילות של Discourse"
+    discourse_narrative_bot_welcome_post_type: "סוג פוסט קבלת הפנים שבוט העלילות של Discourse אמור לשלוח"
+    discourse_narrative_bot_welcome_post_delay: "להמתין (n) שניות בטרם שליחת פוסט קבלת פנים של בוט העלילות של Discourse."
+  badges:
+    certified:
+      name: הסמכה
+      description: "השלמת הדרכת המשתמשים החדשים שלנו"
+      long_description: |
+        עיטור זה מוענק עם השלמת המדריך האינטראקטיבי למשתמש חדש בהצלחה. נקטת יוזמה ללמוד כלים בסיסיים להתדיינות וכעת הוסמכת!
+    licensed:
+      name: ברישיון
+      description: "השלמת הדרכת המשתמשים המתקדמים שלנו"
+      long_description: |
+        עיטור זה מוענק עם השלמת המדריך  האינטראקטיבי משתמשים מתקדמים אינטראקטיבי בהצלחה. צברת מומחיות בתחום כלי הדיון המתקדמים וכעת קיבלת רישיון!
+  discourse_narrative_bot:
+    bio: "היי, אני לא בן אדם אמיתי. אני בוט שיכול ללמד אותך על האתר הזה. כדי לתקשר איתי, יש לשלוח אלי הודעה או לאזכר את **‎`@%{discobot_username}`** בכל מקום שהוא."
+    timeout:
+      message: |-
+        היי @%{username}, מוודא מה אתך כי לא שמעתי ממך זמן מה.
+
+        - כדי להמשיך, עליך פשוט לענות לי בכל עת שמתאים לך.
+
+        - כדי לדלג על שלב זה, יש לשלוח לי את הביטוי `%{skip_trigger}`.
+
+        - כדי להתחיל מחדש יש לשלוח לי את הביטוי `%{reset_trigger}`.
+
+        אם לא מתאים לך, זה לגמרי בסדר. אני רובוט. זה לא פוגע ברגשות שלי. :sob:
+    dice:
+      trigger: "גלגול"
+      invalid: |-
+        עוד לא נוסח הכלל במתמטיקה שמאפשר שילוב כזה של קוביות, עמך הסליחה. :confounded:
+      not_enough_dice: |-
+        אני מוגבל ל־%{num_of_dice} קוביות. [מביש](http://www.therobotsvoice.com/2009/04/the_10_most_shameful_rpg_dice.php), מסכים אתך!
+      out_of_range: |-
+        ידעת ש[מספר הפאות המרבי](https://www.wired.com/2016/05/mathematical-challenge-of-designing-the-worlds-most-complex-120-sided-dice) לקובייה הוגנת מתמטית הוא 120?
+      results: |-
+        > :game_die: %{results}
+    quote:
+      trigger: "ציטוט"
+      '1':
+        quote: "בלב ליבו של הקושי מונחת ההזדמנות"
+        author: "אלברט איינשטיין"
+      '2':
+        quote: "חופש לא שווה כלום אם הוא לא כולל את החופש לטעות."
+        author: "מהטמה גנדי"
+      '3':
+        quote: "אל תבכה כי זה נגמר, חייך כי זה קרה."
+        author: "ד״ר סוס"
+      '4':
+        quote: "אם אתם רוצים שמשהו יתבצע כמו שצריך, עשו זאת בעצמכם."
+        author: "צ׳ארלס-גילאום אטין"
+      '5':
+        quote: "האמינו שאתם יכולים ואתם מחצית הדרך לשם."
+        author: "תאודור רוזוולט"
+      '6':
+        quote: "החיים הם כמו קופסת שוקולד. אתם אף פעם לא יודעים מה תקבלו."
+        author: "אימא של פורסט גאמפ"
+      '7':
+        quote: "זהו צעד אחד קטן לאדם, צעד גדול לאנושות."
+        author: "ניל ארמסטרונג"
+      '8':
+        quote: "עשו דבר אחד בכל יום שמפחיד אתכם"
+        author: "אלינור רוזוולט"
+      '9':
+        quote: "טעויות תמיד נסלחות, אם יש את האומץ להודות בהן."
+        author: "ברוס לי"
+      '10':
+        quote: "מה ששכל האדם מסוגל להגות ולהאמין, ניתן להשגה."
+        author: "נפוליאון היל"
+      results: |-
+        > :left_speech_bubble: _%{quote}_ &mdash; %{author}
+    magic_8_ball:
+      trigger: 'מזלות'
+      answers:
+        '1': "בוודאות מוחלטת"
+        '2': "כך הוחלט"
+        '3': "ללא ספק"
+        '4': "כן כמובן"
+        '5': "אפשר לסמוך על זה"
+        '6': "בעיני, כן"
+        '7': "קרוב לוודאי"
+        '8': "תחזית טובה"
+        '9': "כן"
+        '10': "הסימנים מראים שכן"
+        '11': "תגובה מעורפלת, נא לנסות שוב"
+        '12': "כדאי לשאול שוב מאוחר יותר"
+        '13': "עדיף לא לענות עכשיו"
+        '14': "קשה לחזות עכשיו"
+        '15': "נא להתרכז ולשאול שוב"
+        '16': "לא כדאי לסמוך על זה"
+        '17': "התשובה שלי היא לא"
+        '18': "המקורות שלי אומרים לא"
+        '19': "תחזית לא כל כך טובה"
+        '20': "מאוד בספק"
+      result: |-
+        > :crystal_ball: %{result}
+    track_selector:
+      reset_trigger: 'התחלה'
+      skip_trigger: 'דילוג'
+      help_trigger: 'הצגת עזרה'
+      random_mention:
+        reply: |-
+          הי! כדי לגלות מה אני יכול לעשות, אימרו `@%{discobot_username} %{help_trigger}`.
+        bot_actions: |-
+          `@%{discobot_username} %{dice_trigger} 2d6`
+          > :game_die: 3, 6
+
+          `@%{discobot_username} %{quote_trigger}`
+          > :left_speech_bubble: _ניקטו במעשה אקראי של חסד, ללא ציפייה לתמורה, בטוחים בידיעה שיום אחד מישהו עלול לעשות אותו הדבר בשבילכם_ &mdash; הנסיכה דיינה
+
+          `@%{discobot_username} %{magic_8_ball_trigger}`
+          > :crystal_ball: אתם יכולים לסמוך על כך
+      do_not_understand:
+        first_response: |-
+          הי, תודה על התגובה!
+
+          לצערי, כבוט שתוכנת בצורה גרועה, אני לא ממש מבין את זה. :frowning:
+        track_response: אתם יכולים לנסות שוב, או אם אתם מעדיפים לדלג על שלב זה, אימרו `%{skip_trigger}`. אחרת, כדי להתחיל מחדש, אימרו `%{reset_trigger}`.
+        second_response: |-
+          אויש, סליחה. עדיין לא הצלחתי להבין. :anguished:
+
+          אני רק בוט, כדי לפנות למפעיל בשר ודם, כדאי לבקר ב[דף יצירת הקשר](%{base_path}/about).
+
+          בינתיים, אשב פה בצד בשקט.
+    new_user_narrative:
+      reset_trigger: "מדריך"
+      title: "תעודת השלמת הדרכה למשתמשים חדשים"
+      cert_title: "כהוקרה על סיום מוצלח של מדריך המשתמשים החדשים"
+      hello:
+        title: "ברכות!"
+        message: |-
+          תודה לך על הצטרפותך אל %{title} וברוך בואך!
+
+          - אני רק רובוט, אך [הסגל הידידותי שלנו](%{base_uri}/about) כאן כדי לסייע אם נדרשת התערבות מצד גורם אנושי.
+
+          - מטעמי אבטחה, אנו מגבילים את חופש הפעולה למשתמשים חדשים באופן זמני. עם הזמן יתאפשר לך לצבור מיומנויות חדשות (לרבות [עיטורים](%{base_uri}/badges)) בהתאם לרמת ההיכרות אתך.
+
+          - אנו דוגלים ב[התנהלות קהילתית מתורבתת](%{base_uri}/guidelines) בכל עת.
+      images:
+        reply: |-
+          אחלה תמונה - לחצתי על כפתור הלייק :heart: כדי להביע את הערכתי :heart_eyes:
+        like_not_found: |-
+          שכחת לעשות לייק :heart: ל[פוסט](%{url}) שלי? :crying_cat_face:
+        not_found: |-
+          נראה שלא העלית תמונה אז בחרתי תמונה שאני _בטוח_ שתתאים לטעמך.
+
+          `%{image_url}`
+
+          עכשיו יש לנסות להעלות אותה, או להדביק את הקישור בשורה נפרדת!
+      formatting:
+        instructions: |-
+          למה שלא **נדגיש** או _נטה_ מספר מילים בתגובה שלך?
+
+          - יש להקליד את הצירופים **מודגש** או `נטוי`
+
+          - או ללחוץ על הכפתורים <kbd><b>B</b></kbd> או <kbd><i>I</i></kbd> בעורך
+        reply: |-
+          כל הכבוד! ניתן להשתמש גם ב־HTML וב־BBCode כדי לעצב - למידע נוסף, [ניתן להתנסות עם המדריך הזה](http://commonmark.org/help) :nerd:
+        not_found: |-
+          אללי, לא מצאתי סימוני עיצוב בתגובה שלכם. :pencil2:
+
+          אולי ננסה שוב? כדאי לנסות להשתמש בכפתורי <kbd><b>B</b></kbd> ההדגשה או <kbd><i>I</i></kbd> ההטיה בעורך אם משהו לא מסתדר.
+      quoting:
+        instructions: |-
+          תוכלו לצטט אותי כשאתם משיבים, כדי שאדע בדיוק על איזה חלק אתם משיבים?
+
+          > אם זה קפה, בבקשה תביאו לי תה; אבל אם זה תה, בבקשה תביאו לי קפה.
+          >
+          > אחד הייתרונות של לדבר לעצמכם זה שאתם יודעים שלפחות מישהו מקשיב.
+          >
+          > יש אנשים שיודעים להשתמש במילים, ואחרים... אה, הםםםם, לא להשתמש.
+
+          בחרו את הטקסט של איזה &uarr; ציטוט שאתם מעדיפים, ולחצו על כפתור ה-**ציטוט** שמופיע על הבחירה שלכם - או כפתור ה-**מענה** בתחתית פוסט זה.
+
+          מתחת לציטוט, הוסיפו מילה או שתיים לגבי הסיבה שבחרתם את זה, בגלל שאני סקרן :thinking:
+        reply: |-
+          נפלא, בחרת את הציטוט האהוב עלי! :left_speech_bubble:
+      emoji:
+        reply: |-
+          זה :sparkles: _emojitastic!_ :sparkles:
+      mention:
+        reply: |-
+          _קראתם בשמי!?_ :raised_hand: אני מאמין שכן! :wave: ובכן, אני כאן! תודה שאיזכרתם אותי.  :ok_hand:
+      search:
+        hidden_message: |-
+          איך הצלחת לפספס את הקפיברה הזאת? :wink:
+
+          <img src="%{base_uri}/plugins/discourse-narrative-bot/images/capybara-eating.gif"/>
+
+          שמת לב שחזרת להתחלה? אולי נאכיל את הקפיברה המסכנה הזאת על ידי **השבה עם האמוג׳י `:herb:`** ומיד הדיון יוקפץ לסופו.
+      certificate:
+        alt: 'תעודת הישג'
+    advanced_user_narrative:
+      cert_title: "כהוקרה על סיום של מדריך המשתמשים המתקדמים בהצלחה"
+      title: ':arrow_up: יכולות משתמשים מתקדמים'
+      recover:
+        deleted_post_raw: 'מדוע הפוסט שלי נמחק על ידי @%{discobot_username}? :anguished:'
+        instructions: |-
+          שוד ושבר! נראה שמחקתי לך בטעות פוסט חדש שהרגע יצרתי עבורך.
+
+          יש מצב לבקש ממך <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-rotate-left.png" width="16" height="16"> **לבטל את המחיקה** שלו?
+      category_hashtag:
+        reply: |-
+          מצויין! זיכרו שזה עובד בשביל קטגוריות _וגם_ תגיות, אם תגיות מאופשרות.
+      poll:
+        instructions: |-
+          ידעת שאפשר להוסיף סקר לכל פוסט? כדאי לנסות להשתמש בסמל גלגל השיניים <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-gear.png" width="16" height="16"> שבעורך כדי **לבנות סקר**.
+        not_found: |-
+          אופס! לא היה אף סקר בתגובה שלך.
+
+          יש להשתמש בסמל גלגל השיניים <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-gear.png" width="16" height="16"> שבעורך, או להעתיק ולהדביק את הסקר הזה בתגובה הבאה שלך:
+
+          ```text
+          [poll]
+          * :cat:
+          * :dog:
+          [/poll]
+          ```
+        reply: |-
+          פששש, אחלה סקר! איך לימדתי אותך?
+
+          [poll]
+          * :+1:
+          * :-1:
+          [/poll]
+      details:
+        reply: |-
+          עבודה מעולה — תשומת הלב שלך _לפרטים_ ראויה להערצה!
+      certificate:
+        alt: 'תעודת סיום, מסלול משתמש מתקדם'

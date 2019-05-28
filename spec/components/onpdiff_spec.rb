@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'onpdiff'
 
@@ -32,4 +34,3 @@ describe ONPDiff do
   end
 
 end
-

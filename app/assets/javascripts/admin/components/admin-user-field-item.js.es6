@@ -1,97 +1,103 @@
-import UserField from 'admin/models/user-field';
-import { bufferedProperty } from 'discourse/mixins/buffered-content';
-import { popupAjaxError } from 'discourse/lib/ajax-error';
-import { propertyEqual } from 'discourse/lib/computed';
+import UserField from "admin/models/user-field";
+import { bufferedProperty } from "discourse/mixins/buffered-content";
+import { popupAjaxError } from "discourse/lib/ajax-error";
+import { propertyEqual } from "discourse/lib/computed";
+import { i18n } from "discourse/lib/computed";
+import {
+  default as computed,
+  observes,
+  on
+} from "ember-addons/ember-computed-decorators";
 
-export default Ember.Component.extend(bufferedProperty('userField'), {
-  editing: Ember.computed.empty('userField.id'),
-  classNameBindings: [':user-field'],
+export default Ember.Component.extend(bufferedProperty("userField"), {
+  editing: Ember.computed.empty("userField.id"),
+  classNameBindings: [":user-field"],
 
-  cantMoveUp: propertyEqual('userField', 'firstField'),
-  cantMoveDown: propertyEqual('userField', 'lastField'),
+  cantMoveUp: propertyEqual("userField", "firstField"),
+  cantMoveDown: propertyEqual("userField", "lastField"),
 
-  userFieldsDescription: function() {
-    return I18n.t('admin.user_fields.description');
-  }.property(),
+  userFieldsDescription: i18n("admin.user_fields.description"),
 
-  bufferedFieldType: function() {
-    return UserField.fieldTypeById(this.get('buffered.field_type'));
-  }.property('buffered.field_type'),
-
-  _focusOnEdit: function() {
-    if (this.get('editing')) {
-      Ember.run.scheduleOnce('afterRender', this, '_focusName');
-    }
-  }.observes('editing').on('didInsertElement'),
-
-  _focusName: function() {
-    $('.user-field-name').select();
+  @computed("buffered.field_type")
+  bufferedFieldType(fieldType) {
+    return UserField.fieldTypeById(fieldType);
   },
 
-  fieldName: function() {
-    return UserField.fieldTypeById(this.get('userField.field_type')).get('name');
-  }.property('userField.field_type'),
+  @on("didInsertElement")
+  @observes("editing")
+  _focusOnEdit() {
+    if (this.editing) {
+      Ember.run.scheduleOnce("afterRender", this, "_focusName");
+    }
+  },
 
-  flags: function() {
+  _focusName() {
+    $(".user-field-name").select();
+  },
+
+  @computed("userField.field_type")
+  fieldName(fieldType) {
+    return UserField.fieldTypeById(fieldType).get("name");
+  },
+
+  @computed(
+    "userField.editable",
+    "userField.required",
+    "userField.show_on_profile",
+    "userField.show_on_user_card"
+  )
+  flags(editable, required, showOnProfile, showOnUserCard) {
     const ret = [];
-    if (this.get('userField.editable')) {
-      ret.push(I18n.t('admin.user_fields.editable.enabled'));
+    if (editable) {
+      ret.push(I18n.t("admin.user_fields.editable.enabled"));
     }
-    if (this.get('userField.required')) {
-      ret.push(I18n.t('admin.user_fields.required.enabled'));
+    if (required) {
+      ret.push(I18n.t("admin.user_fields.required.enabled"));
     }
-    if (this.get('userField.show_on_profile')) {
-      ret.push(I18n.t('admin.user_fields.show_on_profile.enabled'));
+    if (showOnProfile) {
+      ret.push(I18n.t("admin.user_fields.show_on_profile.enabled"));
     }
-    if (this.get('userField.show_on_user_card')) {
-      ret.push(I18n.t('admin.user_fields.show_on_user_card.enabled'));
+    if (showOnUserCard) {
+      ret.push(I18n.t("admin.user_fields.show_on_user_card.enabled"));
     }
 
-    return ret.join(', ');
-  }.property('userField.editable', 'userField.required', 'userField.show_on_profile', 'userField.show_on_user_card'),
+    return ret.join(", ");
+  },
 
   actions: {
     save() {
-      const self = this;
-      const buffered = this.get('buffered');
-      const attrs = buffered.getProperties('name',
-                                           'description',
-                                           'field_type',
-                                           'editable',
-                                           'required',
-                                           'show_on_profile',
-                                           'show_on_user_card',
-                                           'options');
+      const buffered = this.buffered;
+      const attrs = buffered.getProperties(
+        "name",
+        "description",
+        "field_type",
+        "editable",
+        "required",
+        "show_on_profile",
+        "show_on_user_card",
+        "options"
+      );
 
-      this.get('userField').save(attrs).then(function() {
-        self.set('editing', false);
-        self.commitBuffer();
-      }).catch(popupAjaxError);
-    },
-
-    moveUp() {
-      this.sendAction('moveUpAction', this.get('userField'));
-    },
-
-    moveDown() {
-      this.sendAction('moveDownAction', this.get('userField'));
+      this.userField
+        .save(attrs)
+        .then(() => {
+          this.set("editing", false);
+          this.commitBuffer();
+        })
+        .catch(popupAjaxError);
     },
 
     edit() {
-      this.set('editing', true);
-    },
-
-    destroy() {
-      this.sendAction('destroyAction', this.get('userField'));
+      this.set("editing", true);
     },
 
     cancel() {
-      const id = this.get('userField.id');
+      const id = this.get("userField.id");
       if (Ember.isEmpty(id)) {
-        this.sendAction('destroyAction', this.get('userField'));
+        this.destroyAction(this.userField);
       } else {
         this.rollbackBuffer();
-        this.set('editing', false);
+        this.set("editing", false);
       }
     }
   }

@@ -1,10 +1,8 @@
-.emoji-table-wrapper {
-  min-width: 320px;
+.emoji-picker {
+  max-height: 280px;
+  border: none;
 }
 
-.emoji-modal {
-  width: 340px;
-  margin-top: -132px;
-  margin-left: -170px;
-  background-color: dark-light-choose(#dadada, blend-primary-secondary(5%));
+.emoji-picker .category-icon {
+  margin: 2px;
 }

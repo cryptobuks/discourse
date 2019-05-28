@@ -17,8 +17,6 @@ ro:
         few: "total voturi"
         other: "total voturi"
       average_rating: "Media: <strong>%{average}</strong>."
-      public:
-        title: "Voturile sunt publice."
       multiple:
         help:
           at_least_min_options:
@@ -26,9 +24,9 @@ ro:
             few: "Trebuie să alegi cel puțin <strong>%{count}</strong> opțiuni."
             other: "Trebuie să alegi cel puțin <strong>%{count}</strong> opțiuni."
           up_to_max_options:
-            one: "Trebuie să alegi maxim <strong>o</strong> opțiune."
-            few: "Trebuie să alegi maxim <strong>%{count}</strong> opțiuni."
-            other: "Trebuie să alegi maxim <strong>%{count}</strong> opțiuni."
+            one: "Poți alege maximum <strong>o</strong> opțiune."
+            few: "Poți alege până la <strong>%{count}</strong> opțiuni."
+            other: "Poți alege până la <strong>%{count}</strong> de opțiuni."
           x_options:
             one: "Trebuie să alegi <strong>o</strong> opțiune."
             few: "Trebuie să alegi <strong>%{count}</strong> opțiuni."
@@ -59,11 +57,15 @@ ro:
         insert: Introdu sondaj
         help:
           options_count: Trebuie să introduci cel puțin 2 opțiuni
+          invalid_values: Valoarea minimă trebuie să fie mai mică decât valoarea maximă.
+          min_step_value: Valoarea minimă a pasului este 1
         poll_type:
           label: Tip
           regular: Opțiune unică
           multiple: Opțiune multiplă
           number: Ordonare numerică
+        poll_result:
+          label: Rezultate
         poll_config:
           max: Maxim
           min: Minim
@@ -72,3 +74,5 @@ ro:
           label: Arată cine a votat
         poll_options:
           label: Arată o singură opțiune de sondaj pe linie
+        automatic_close:
+          label: Închide sondaj automat

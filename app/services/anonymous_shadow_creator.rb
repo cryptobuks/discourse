@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AnonymousShadowCreator
 
   def self.get_master(user)
@@ -13,11 +15,12 @@ class AnonymousShadowCreator
     return unless user
     return unless SiteSetting.allow_anonymous_posting
     return if user.trust_level < SiteSetting.anonymous_posting_min_trust_level
+    return if SiteSetting.must_approve_users? && !user.approved?
 
     if (shadow_id = user.custom_fields["shadow_id"].to_i) > 0
       shadow = User.find_by(id: shadow_id)
 
-      if shadow && shadow.post_count > 0 &&
+      if shadow && (shadow.post_count + shadow.topic_count) > 0 &&
           shadow.last_posted_at < SiteSetting.anonymous_account_duration_minutes.minutes.ago
         shadow = nil
       end
@@ -35,16 +38,19 @@ class AnonymousShadowCreator
       shadow = User.create!(
         password: SecureRandom.hex,
         email: "#{SecureRandom.hex}@anon.#{Discourse.current_hostname}",
+        skip_email_validation: true,
         name: username, # prevents error when names are required
         username: username,
         active: true,
         trust_level: 1,
-        trust_level_locked: true,
+        manual_locked_trust_level: 1,
+        approved: true,
+        approved_at: 1.day.ago,
         created_at: 1.day.ago # bypass new user restrictions
       )
 
       shadow.user_option.update_columns(
-        email_private_messages: false,
+        email_messages_level: UserOption.email_level_types[:never],
         email_digests: false
       )
 

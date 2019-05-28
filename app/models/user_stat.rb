@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 class UserStat < ActiveRecord::Base
 
   belongs_to :user
@@ -6,12 +7,83 @@ class UserStat < ActiveRecord::Base
   def self.ensure_consistency!(last_seen = 1.hour.ago)
     reset_bounce_scores
     update_view_counts(last_seen)
+    update_first_unread(last_seen)
+  end
+
+  def self.update_first_unread(last_seen, limit: 10_000)
+    DB.exec(<<~SQL, min_date: last_seen, limit: limit, now: 10.minutes.ago)
+      UPDATE user_stats us
+      SET first_unread_at = COALESCE(Y.min_date, :now)
+      FROM (
+        SELECT u1.id user_id,
+           X.min min_date
+        FROM users u1
+        LEFT JOIN
+          (SELECT u.id AS user_id,
+                  min(topics.updated_at) min
+           FROM users u
+           LEFT JOIN topic_users tu ON tu.user_id = u.id
+           LEFT JOIN topics ON tu.topic_id = topics.id
+           JOIN user_stats AS us ON us.user_id = u.id
+           JOIN user_options AS uo ON uo.user_id = u.id
+           JOIN categories c ON c.id = topics.category_id
+           WHERE u.id IN (
+               SELECT id
+               FROM users
+               WHERE last_seen_at IS NOT NULL
+                AND last_seen_at > :min_date
+                ORDER BY last_seen_at DESC
+                LIMIT :limit
+              )
+             AND topics.archetype <> 'private_message'
+             AND (("topics"."deleted_at" IS NULL
+                   AND tu.last_read_post_number < CASE
+                                                      WHEN u.admin
+                                                           OR u.moderator THEN topics.highest_staff_post_number
+                                                      ELSE topics.highest_post_number
+                                                  END
+                   AND COALESCE(tu.notification_level, 1) >= 2)
+                  OR (1=0))
+             AND (topics.visible
+                  OR u.admin
+                  OR u.moderator)
+             AND topics.deleted_at IS NULL
+             AND (NOT c.read_restricted
+                  OR u.admin
+                  OR category_id IN
+                    (SELECT c2.id
+                     FROM categories c2
+                     JOIN category_groups cg ON cg.category_id = c2.id
+                     JOIN group_users gu ON gu.user_id = u.id
+                     AND cg.group_id = gu.group_id
+                     WHERE c2.read_restricted ))
+             AND NOT EXISTS
+               (SELECT 1
+                FROM category_users cu
+                WHERE last_read_post_number IS NULL
+                  AND cu.user_id = u.id
+                  AND cu.category_id = topics.category_id
+                  AND cu.notification_level = 0)
+           GROUP BY u.id,
+                    u.username) AS X ON X.user_id = u1.id
+        WHERE u1.id IN
+            (
+             SELECT id
+             FROM users
+             WHERE last_seen_at IS NOT NULL
+              AND last_seen_at > :min_date
+              ORDER BY last_seen_at DESC
+              LIMIT :limit
+            )
+      ) Y
+      WHERE Y.user_id = us.user_id
+    SQL
   end
 
   def self.reset_bounce_scores
     UserStat.where("reset_bounce_score_after < now()")
-            .where("bounce_score > 0")
-            .update_all(bounce_score: 0)
+      .where("bounce_score > 0")
+      .update_all(bounce_score: 0)
   end
 
   # Updates the denormalized view counts for all users
@@ -22,63 +94,80 @@ class UserStat < ActiveRecord::Base
     #  we also ensure we only touch the table if data changes
 
     # Update denormalized topics_entered
-    exec_sql "UPDATE user_stats SET topics_entered = X.c
-             FROM
-            (SELECT v.user_id, COUNT(topic_id) AS c
-             FROM topic_views AS v
-             WHERE v.user_id IN (
-                SELECT u1.id FROM users u1 where u1.last_seen_at > :seen_at
-             )
-             GROUP BY v.user_id) AS X
-            WHERE
-                    X.user_id = user_stats.user_id AND
-                    X.c <> topics_entered
-    ", seen_at: last_seen
+    DB.exec(<<~SQL, seen_at: last_seen)
+      UPDATE user_stats SET topics_entered = X.c
+       FROM
+      (SELECT v.user_id, COUNT(topic_id) AS c
+       FROM topic_views AS v
+       WHERE v.user_id IN (
+          SELECT u1.id FROM users u1 where u1.last_seen_at > :seen_at
+       )
+       GROUP BY v.user_id) AS X
+      WHERE
+        X.user_id = user_stats.user_id AND
+        X.c <> topics_entered
+    SQL
 
     # Update denormalzied posts_read_count
-    exec_sql "UPDATE user_stats SET posts_read_count = X.c
-              FROM
-              (SELECT pt.user_id,
-                      COUNT(*) AS c
-               FROM users AS u
-               JOIN post_timings AS pt ON pt.user_id = u.id
-               JOIN topics t ON t.id = pt.topic_id
-               WHERE u.last_seen_at > :seen_at AND
-                     t.archetype = 'regular' AND
-                     t.deleted_at IS NULL
-               GROUP BY pt.user_id) AS X
-               WHERE X.user_id = user_stats.user_id AND
-                     X.c <> posts_read_count
-    ", seen_at: last_seen
+    DB.exec(<<~SQL, seen_at: last_seen)
+      UPDATE user_stats SET posts_read_count = X.c
+      FROM
+      (SELECT pt.user_id,
+              COUNT(*) AS c
+       FROM users AS u
+       JOIN post_timings AS pt ON pt.user_id = u.id
+       JOIN topics t ON t.id = pt.topic_id
+       WHERE u.last_seen_at > :seen_at AND
+             t.archetype = 'regular' AND
+             t.deleted_at IS NULL
+       GROUP BY pt.user_id) AS X
+       WHERE X.user_id = user_stats.user_id AND
+             X.c <> posts_read_count
+    SQL
   end
 
+  # topic_reply_count is a count of posts in other users' topics
   def update_topic_reply_count
-    self.topic_reply_count =
-        Topic
-        .where(['id in (
-              SELECT topic_id FROM posts p
-              JOIN topics t2 ON t2.id = p.topic_id
-              WHERE p.deleted_at IS NULL AND
-                t2.user_id <> p.user_id AND
-                p.user_id = ?
-              )', self.user_id])
-        .count
+    self.topic_reply_count = Topic
+      .joins("INNER JOIN posts ON topics.id = posts.topic_id AND topics.user_id <> posts.user_id")
+      .where("posts.deleted_at IS NULL AND posts.user_id = ?", self.user_id)
+      .distinct
+      .count
   end
 
   MAX_TIME_READ_DIFF = 100
   # attempt to add total read time to user based on previous time this was called
-  def update_time_read!
-    if last_seen = last_seen_cached
+  def self.update_time_read!(id)
+    if last_seen = last_seen_cached(id)
       diff = (Time.now.to_f - last_seen.to_f).round
       if diff > 0 && diff < MAX_TIME_READ_DIFF
-        UserStat.where(user_id: id, time_read: time_read).update_all ["time_read = time_read + ?", diff]
+        update_args = ["time_read = time_read + ?", diff]
+        UserStat.where(user_id: id).update_all(update_args)
+        UserVisit.where(user_id: id, visited_at: Time.zone.now.to_date).update_all(update_args)
       end
     end
-    cache_last_seen(Time.now.to_f)
+    cache_last_seen(id, Time.now.to_f)
+  end
+
+  def update_time_read!
+    UserStat.update_time_read!(id)
   end
 
   def reset_bounce_score!
     update_columns(reset_bounce_score_after: nil, bounce_score: 0)
+  end
+
+  def self.last_seen_key(id)
+    # frozen
+    -"user-last-seen:#{id}"
+  end
+
+  def self.last_seen_cached(id)
+    $redis.get(last_seen_key(id))
+  end
+
+  def self.cache_last_seen(id, val)
+    $redis.setex(last_seen_key(id), MAX_TIME_READ_DIFF, val)
   end
 
   protected
@@ -86,21 +175,6 @@ class UserStat < ActiveRecord::Base
   def trigger_badges
     BadgeGranter.queue_badge_grant(Badge::Trigger::UserChange, user: self.user)
   end
-
-  private
-
-  def last_seen_key
-    @last_seen_key ||= "user-last-seen:#{id}"
-  end
-
-  def last_seen_cached
-    $redis.get(last_seen_key)
-  end
-
-  def cache_last_seen(val)
-    $redis.set(last_seen_key, val)
-  end
-
 end
 
 # == Schema Information
@@ -120,6 +194,10 @@ end
 #  first_post_created_at    :datetime
 #  post_count               :integer          default(0), not null
 #  topic_count              :integer          default(0), not null
-#  bounce_score             :integer          default(0), not null
+#  bounce_score             :float            default(0.0), not null
 #  reset_bounce_score_after :datetime
+#  flags_agreed             :integer          default(0), not null
+#  flags_disagreed          :integer          default(0), not null
+#  flags_ignored            :integer          default(0), not null
+#  first_unread_at          :datetime         not null
 #

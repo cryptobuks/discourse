@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ColorSchemeColorSerializer < ApplicationSerializer
   attributes :name, :hex, :default_hex
 
@@ -6,6 +8,11 @@ class ColorSchemeColorSerializer < ApplicationSerializer
   end
 
   def default_hex
-    ColorScheme.base_colors[object.name]
+    if object.color_scheme
+      object.color_scheme.base_colors[object.name]
+    else
+      # it is a base color so it is already default
+      object.hex
+    end
   end
 end

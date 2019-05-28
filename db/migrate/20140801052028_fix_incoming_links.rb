@@ -1,4 +1,6 @@
-class FixIncomingLinks < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class FixIncomingLinks < ActiveRecord::Migration[4.2]
   def up
     execute "DROP INDEX incoming_index"
     add_column :incoming_links, :post_id, :integer

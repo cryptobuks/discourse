@@ -1,4 +1,6 @@
-class AddFeaturedTopicsToCategories < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class AddFeaturedTopicsToCategories < ActiveRecord::Migration[4.2]
   def up
     add_column :categories, :num_featured_topics, :integer, default: 3
 

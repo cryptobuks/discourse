@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CategoryTag < ActiveRecord::Base
   belongs_to :category
   belongs_to :tag
@@ -10,8 +12,8 @@ end
 #  id          :integer          not null, primary key
 #  category_id :integer          not null
 #  tag_id      :integer          not null
-#  created_at  :datetime
-#  updated_at  :datetime
+#  created_at  :datetime         not null
+#  updated_at  :datetime         not null
 #
 # Indexes
 #

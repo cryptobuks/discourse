@@ -15,18 +15,16 @@ el:
         one: "συνολική ψήφος"
         other: "συνολικές ψήφοι"
       average_rating: "Μέση βαθμολογία: <strong>%{average}</strong>."
-      public:
-        title: "Οι ψηφοφορίες είναι δημόσιες "
       multiple:
         help:
           at_least_min_options:
-            one: "Επιλέξτε τουλάχιστον <strong>1</strong> επιλογή"
+            one: "Επιλέξτε τουλάχιστον <strong>%{count}</strong> επιλογή"
             other: "Επιλέξτε τουλάχιστον <strong>%{count}</strong> επιλογές"
           up_to_max_options:
-            one: "Επιλέξτε μέχρι  <strong>1</strong> επιλογή"
+            one: "Επιλέξτε μέχρι  <strong>%{count}</strong> επιλογή"
             other: "Επιλέξτε μέχρι  <strong>%{count}</strong> επιλογές"
           x_options:
-            one: "Επιλέξτε <strong>1</strong>  επιλογή"
+            one: "Επιλέξτε <strong>%{count}</strong>  επιλογή"
             other: "Επιλέξτε <strong>%{count}</strong> επιλογές"
           between_min_and_max_options: "Επιλέξτε ανάμεσα σε <strong>%{min}</strong> και <strong>%{max}</strong> επιλογές"
       cast-votes:
@@ -54,11 +52,15 @@ el:
         insert: Εισαγωγή Ψηφοφορίας
         help:
           options_count: Εισάγετε τουλάχιστόν 2 επιλογές
+          invalid_values: Η ελάχιστη τιμή θα πρέπει να είναι μικρότερη από την μέγιστη τιμή.
+          min_step_value: Η ελάχιστη τιμή για το βήμα είναι 1
         poll_type:
           label: Τύπος
           regular: Μία επιλογή
           multiple: Πολλαπλές επιλογές
           number: Αξιολόγηση αριθμoύ
+        poll_result:
+          label: Αποτελέσματα
         poll_config:
           max: Μέγιστο
           min: Ελάχιστο

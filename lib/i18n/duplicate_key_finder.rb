@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "locale_file_walker"
 
 class DuplicateKeyFinder < LocaleFileWalker
@@ -10,8 +12,8 @@ class DuplicateKeyFinder < LocaleFileWalker
 
   protected
 
-    def handle_scalar(node, depth, parents)
-      super
-      @keys_with_count[parents.join('.')] += 1
-    end
+  def handle_scalar(node, depth, parents)
+    super
+    @keys_with_count[parents.join('.')] += 1
+  end
 end

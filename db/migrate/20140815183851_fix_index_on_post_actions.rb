@@ -1,4 +1,6 @@
-class FixIndexOnPostActions < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class FixIndexOnPostActions < ActiveRecord::Migration[4.2]
   def change
     execute 'UPDATE post_actions SET targets_topic = false WHERE targets_topic IS NULL'
     change_column :post_actions, :targets_topic, :boolean, default: false, null: false

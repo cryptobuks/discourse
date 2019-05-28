@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'email'
 
@@ -24,9 +26,8 @@ describe Email::Styles do
       expect(style.to_html).to be_blank
     end
 
-    # Pending due to email effort @coding-horror made in d2fb2bc4c
-    skip "adds a max-width to images" do
-      frag = basic_fragment("<img src='gigantic.jpg'>")
+    it "adds a max-width to large images" do
+      frag = basic_fragment("<img height='auto' width='auto' src='gigantic.jpg'>")
       expect(frag.at("img")["style"]).to match("max-width")
     end
 
@@ -107,6 +108,15 @@ describe Email::Styles do
       expect(frag.at('iframe')).to be_blank
       expect(frag.at('a')).to be_blank
     end
+
+    it "prefers data-original-href attribute to get iframe link" do
+      original_url = "https://vimeo.com/329875646/85f1546a42"
+      iframe_url = "https://player.vimeo.com/video/329875646"
+      frag = html_fragment("<iframe src=\"#{iframe_url}\" data-original-href=\"#{original_url}\"></iframe>")
+      expect(frag.at('iframe')).to be_blank
+      expect(frag.at('a')).to be_present
+      expect(frag.at('a')['href']).to eq(original_url)
+    end
   end
 
   context "rewriting protocol relative URLs to the forum" do
@@ -117,7 +127,7 @@ describe Email::Styles do
 
     context "without https" do
       before do
-        SiteSetting.stubs(:force_https).returns(false)
+        SiteSetting.force_https = false
       end
 
       it "rewrites the href to have http" do
@@ -138,7 +148,7 @@ describe Email::Styles do
 
     context "with https" do
       before do
-        SiteSetting.stubs(:force_https).returns(true)
+        SiteSetting.force_https = true
       end
 
       it "rewrites the forum URL to have https" do
@@ -172,6 +182,13 @@ describe Email::Styles do
       style = Email::Styles.new(emoji)
       style.strip_avatars_and_emojis
       expect(style.to_html).to match_html("cry_cry")
+    end
+
+    it "works if img tag has no attrs" do
+      cooked = "Create a method for click on image and use ng-click in <img> in your slide box...it is simple"
+      style = Email::Styles.new(cooked)
+      style.strip_avatars_and_emojis
+      expect(style.to_html).to eq(cooked)
     end
   end
 

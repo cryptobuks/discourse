@@ -19,22 +19,20 @@ ru:
         many: "голосов"
         other: "голосов"
       average_rating: "Средний рейтинг: <strong>%{average}</strong>."
-      public:
-        title: "Голоса в этом опросе будут видны всем (в отличие от анонимных опросов)."
       multiple:
         help:
           at_least_min_options:
-            one: "Выберите хотя бы <strong>1</strong> вариант ответа"
+            one: "Выберите хотя бы <strong>%{count}</strong> вариант ответа"
             few: "Выберите хотя бы <strong>%{count}</strong> варианта ответов"
             many: "Выберите хотя бы <strong>%{count}</strong> вариантов ответов"
             other: "Выберите хотя бы <strong>%{count}</strong> вариантов ответов"
           up_to_max_options:
-            one: "Выберите не более <strong>1</strong> варианта ответа"
+            one: "Выберите не более <strong>%{count}</strong> варианта ответа"
             few: "Выберите не более <strong>%{count}</strong> вариантов ответов"
             many: "Выберите не более <strong>%{count}</strong> вариантов ответов"
             other: "Выберите не более <strong>%{count}</strong> вариантов ответов"
           x_options:
-            one: "Выберите <strong>1</strong> вариант ответа"
+            one: "Выберите <strong>%{count}</strong> вариант ответа"
             few: "Выберите <strong>%{count}</strong> варианта ответотв"
             many: "Выберите <strong>%{count}</strong> вариантов ответов"
             other: "Выберите <strong>%{count}</strong> вариантов ответов"
@@ -64,11 +62,15 @@ ru:
         insert: Вставить опрос в сообщение
         help:
           options_count: Введите хотя бы 2 варианта ответа
+          invalid_values: Минимальное значение должно быть меньше максимального значения.
+          min_step_value: Минимальное значение шага = 1
         poll_type:
           label: Тип опроса
           regular: Выбор одного варианта из списка
           multiple: Выбор нескольких вариантов из списка
           number: Шкала из чисел
+        poll_result:
+          label: Результаты
         poll_config:
           max: Макс.
           min: Мин.
@@ -77,3 +79,5 @@ ru:
           label: Показывать, кто голосовал (не отмечайте флажок, чтобы голосование было анонимным)
         poll_options:
           label: Введите варианты ответа, по одному на строку
+        automatic_close:
+          label: Автоматически закрывать опрос

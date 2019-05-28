@@ -1,7 +1,10 @@
+# frozen_string_literal: true
+
 class WebHook < ActiveRecord::Base
   has_and_belongs_to_many :web_hook_event_types
   has_and_belongs_to_many :groups
   has_and_belongs_to_many :categories
+  has_and_belongs_to_many :tags
 
   has_many :web_hook_events, dependent: :destroy
 
@@ -13,6 +16,12 @@ class WebHook < ActiveRecord::Base
   validates_presence_of :last_delivery_status
   validates_presence_of :web_hook_event_types, unless: :wildcard_web_hook?
 
+  before_save :strip_url
+
+  def tag_names=(tag_names_arg)
+    DiscourseTagging.add_or_create_tags_by_name(self, tag_names_arg, unlimited: true)
+  end
+
   def self.content_types
     @content_types ||= Enum.new('application/json' => 1,
                                 'application/x-www-form-urlencoded' => 2)
@@ -21,60 +30,91 @@ class WebHook < ActiveRecord::Base
   def self.last_delivery_statuses
     @last_delivery_statuses ||= Enum.new(inactive: 1,
                                          failed: 2,
-                                         successful: 3)
+                                         successful: 3,
+                                         disabled: 4)
   end
 
   def self.default_event_types
     [WebHookEventType.find(WebHookEventType::POST)]
   end
 
-  def self.find_by_type(type)
+  def strip_url
+    self.payload_url = (payload_url || "").strip.presence
+  end
+
+  def self.active_web_hooks(type)
     WebHook.where(active: true)
-           .joins(:web_hook_event_types)
-           .where("web_hooks.wildcard_web_hook = ? OR web_hook_event_types.name = ?", true, type.to_s)
+      .joins(:web_hook_event_types)
+      .where("web_hooks.wildcard_web_hook = ? OR web_hook_event_types.name = ?", true, type.to_s)
+      .distinct
   end
 
-  def self.enqueue_hooks(type, opts = {})
-    find_by_type(type).each do |w|
-      Jobs.enqueue(:emit_web_hook_event, opts.merge(web_hook_id: w.id, event_type: type.to_s))
+  def self.enqueue_hooks(type, event, opts = {})
+    active_web_hooks(type).each do |web_hook|
+      Jobs.enqueue(:emit_web_hook_event, opts.merge(
+        web_hook_id: web_hook.id, event_name: event.to_s, event_type: type.to_s
+      ))
     end
   end
 
-  def self.enqueue_topic_hooks(event, topic, user=nil)
-    WebHook.enqueue_hooks(:topic, topic_id: topic.id, user_id: user&.id, category_id: topic&.category_id, event_name: event.to_s)
-  end
+  def self.enqueue_object_hooks(type, object, event, serializer = nil)
+    if type == :flag
+      Discourse.deprecate("The flags webhook is deprecated. Please use reviewable instead.")
+    end
 
-  def self.enqueue_post_hooks(event, post, user=nil)
-    WebHook.enqueue_hooks(:post, post_id: post.id, topic_id: post&.topic_id, user_id: user&.id, category_id: post&.topic&.category_id, event_name: event.to_s)
-  end
+    if active_web_hooks(type).exists?
+      payload = WebHook.generate_payload(type, object, serializer)
 
-  %i(topic_destroyed topic_recovered).each do |event|
-    DiscourseEvent.on(event) do |topic, user|
-      WebHook.enqueue_topic_hooks(event, topic, user)
+      WebHook.enqueue_hooks(type, event,
+        id: object.id,
+        payload: payload
+      )
     end
   end
 
-  DiscourseEvent.on(:topic_created) do |topic, _, user|
-    WebHook.enqueue_topic_hooks(:topic_created, topic, user)
-  end
+  def self.enqueue_topic_hooks(event, topic, payload = nil)
+    if active_web_hooks('topic').exists? && topic.present?
+      payload ||= begin
+        topic_view = TopicView.new(topic.id, Discourse.system_user)
+        WebHook.generate_payload(:topic, topic_view, WebHookTopicViewSerializer)
+      end
 
-  %i(post_created
-     post_destroyed
-     post_recovered).each do |event|
-    DiscourseEvent.on(event) do |post, _, user|
-      WebHook.enqueue_post_hooks(event, post, user)
+      WebHook.enqueue_hooks(:topic, event,
+        id: topic.id,
+        category_id: topic.category_id,
+        tag_ids: topic.tags.pluck(:id),
+        payload: payload
+      )
     end
   end
 
-  DiscourseEvent.on(:post_edited) do |post, topic_changed|
-    WebHook.enqueue_post_hooks(:post_edited, post)
-    WebHook.enqueue_topic_hooks(:topic_edited, post.topic) if post.is_first_post? && topic_changed
+  def self.enqueue_post_hooks(event, post, payload = nil)
+    if active_web_hooks('post').exists? && post.present?
+      payload ||= WebHook.generate_payload(:post, post)
+
+      WebHook.enqueue_hooks(:post, event,
+        id: post.id,
+        category_id: post.topic&.category_id,
+        tag_ids: post.topic&.tags&.pluck(:id),
+        payload: payload
+      )
+    end
   end
 
-  %i(user_created user_approved user_updated).each do |event|
-    DiscourseEvent.on(event) do |user|
-      WebHook.enqueue_hooks(:user, user_id: user.id, event_name: event.to_s)
-    end
+  def self.generate_payload(type, object, serializer = nil)
+    serializer ||= TagSerializer if type == :tag
+    serializer ||= "WebHook#{type.capitalize}Serializer".constantize
+
+    serializer.new(object,
+      scope: self.guardian,
+      root: false
+    ).to_json
+  end
+
+  private
+
+  def self.guardian
+    @guardian ||= Guardian.new(Discourse.system_user)
   end
 end
 
@@ -91,6 +131,6 @@ end
 #  wildcard_web_hook    :boolean          default(FALSE), not null
 #  verify_certificate   :boolean          default(TRUE), not null
 #  active               :boolean          default(FALSE), not null
-#  created_at           :datetime
-#  updated_at           :datetime
+#  created_at           :datetime         not null
+#  updated_at           :datetime         not null
 #

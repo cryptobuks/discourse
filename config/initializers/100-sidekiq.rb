@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "sidekiq/pausable"
 
 Sidekiq.configure_client do |config|
@@ -9,36 +11,58 @@ Sidekiq.configure_server do |config|
 
   config.server_middleware do |chain|
     chain.add Sidekiq::Pausable
-    # ensure statistic middleware is included in case of a fork
-    chain.add Sidekiq::Statistic::Middleware
   end
+end
+
+MiniScheduler.configure do |config|
+
+  config.redis = $redis
+
+  config.job_exception_handler do |ex, context|
+    Discourse.handle_job_exception(ex, context)
+  end
+
+  config.job_ran do |stat|
+    DiscourseEvent.trigger(:scheduled_job_ran, stat)
+  end
+
+  config.skip_schedule { Sidekiq.paused? }
+
+  config.before_sidekiq_web_request do
+    RailsMultisite::ConnectionManagement.establish_connection(
+      db: RailsMultisite::ConnectionManagement::DEFAULT
+    )
+  end
+
 end
 
 if Sidekiq.server?
 
+  module Sidekiq
+    class CLI
+      private
+
+      def print_banner
+        # banner takes up too much space
+      end
+    end
+  end
+
+  # defer queue should simply run in sidekiq
+  Scheduler::Defer.async = false
+
   # warm up AR
-  RailsMultisite::ConnectionManagement.each_connection do
+  RailsMultisite::ConnectionManagement.safe_each_connection do
     (ActiveRecord::Base.connection.tables - %w[schema_migrations]).each do |table|
       table.classify.constantize.first rescue nil
     end
   end
 
   Rails.application.config.after_initialize do
-    require 'scheduler/scheduler'
-    manager = Scheduler::Manager.new
-    Scheduler::Manager.discover_schedules.each do |schedule|
-      manager.ensure_schedule!(schedule)
-    end
-    Thread.new do
-      while true
-        begin
-          manager.tick
-        rescue => e
-          # the show must go on
-          Discourse.handle_job_exception(e, {message: "While ticking scheduling manager"})
-        end
-        sleep 1
-      end
+    scheduler_hostname = ENV["UNICORN_SCHEDULER_HOSTNAME"]
+
+    if !scheduler_hostname || scheduler_hostname.split(',').include?(`hostname`.strip)
+      MiniScheduler.start
     end
   end
 end

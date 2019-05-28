@@ -1,6 +1,12 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe IncomingLinksReport do
+
+  before do
+    freeze_time DateTime.parse('2010-01-01 6:00')
+  end
 
   describe 'integration' do
     it 'runs correctly' do
@@ -40,20 +46,76 @@ describe IncomingLinksReport do
 
       r = IncomingLinksReport.find('top_referrers').as_json
       expect(r[:data]).to eq [
-        {username: p1.user.username, user_id: p1.user.id, num_clicks: 7 + 2, num_topics: 2},
-        {username: p2.user.username, user_id: p2.user.id, num_clicks: 3, num_topics: 1}
+        {
+          user_avatar_template: User.default_template(p1.user.username),
+          username: p1.user.username,
+          user_id: p1.user.id,
+          num_clicks: 7 + 2, num_topics: 2
+        },
+        {
+          user_avatar_template: User.default_template(p2.user.username),
+          username: p2.user.username,
+          user_id: p2.user.id,
+          num_clicks: 3,
+          num_topics: 1
+        }
       ]
 
       r = IncomingLinksReport.find('top_traffic_sources').as_json
       expect(r[:data]).to eq [
-        {domain: 'test.com', num_clicks: 7, num_topics: 1},
-        {domain: 'foo.com', num_clicks: 3 + 2, num_topics: 1}
+        { domain: 'test.com', num_clicks: 7, num_topics: 1 },
+        { domain: 'foo.com', num_clicks: 3 + 2, num_topics: 1 }
       ]
 
       r = IncomingLinksReport.find('top_referred_topics').as_json
       expect(r[:data]).to eq [
-        {topic_id: p1.topic.id, topic_title: p1.topic.title, topic_slug: p1.topic.slug, num_clicks: 7},
-        {topic_id: p2.topic.id, topic_title: p2.topic.title, topic_slug: p2.topic.slug, num_clicks: 2 + 3},
+        { topic_id: p1.topic.id, topic_title: p1.topic.title, topic_url: p1.topic.relative_url, num_clicks: 7 },
+        { topic_id: p2.topic.id, topic_title: p2.topic.title, topic_url: p2.topic.relative_url, num_clicks: 2 + 3 },
+      ]
+    end
+
+    it "does not report PMs" do
+      public_topic = Fabricate(:topic)
+      message_topic = Fabricate(:private_message_topic)
+
+      public_post = Fabricate(:post, topic: public_topic)
+      message_post = Fabricate(:post, topic: message_topic)
+
+      IncomingLink.add(
+        referer: "http://foo.com",
+        host: "http://discourse.example.com",
+        topic_id: public_topic.id,
+        id_address: "1.2.3.4",
+        username: public_post.user.username,
+      )
+
+      IncomingLink.add(
+        referer: "http://foo.com",
+        host: "http://discourse.example.com",
+        topic_id: message_topic.id,
+        id_address: "5.6.7.8",
+        username: message_post.user.username,
+      )
+
+      r = IncomingLinksReport.find('top_referrers').as_json
+      expect(r[:data]).to eq [
+        {
+          user_avatar_template: User.default_template(public_post.user.username),
+          username: public_post.user.username,
+          user_id: public_post.user.id,
+          num_clicks: 1,
+          num_topics: 1
+        }
+      ]
+
+      r = IncomingLinksReport.find('top_traffic_sources').as_json
+      expect(r[:data]).to eq [
+        { domain: 'foo.com', num_clicks: 1, num_topics: 1 },
+      ]
+
+      r = IncomingLinksReport.find('top_referred_topics').as_json
+      expect(r[:data]).to eq [
+        { topic_id: public_topic.id, topic_title: public_topic.title, topic_url: public_topic.relative_url, num_clicks: 1 },
       ]
     end
   end
@@ -61,10 +123,10 @@ describe IncomingLinksReport do
   describe 'top_referrers' do
     subject(:top_referrers) { IncomingLinksReport.find('top_referrers').as_json }
 
-    let(:amy) { Fabricate(:user, username: 'amy') }
-    let(:bob) { Fabricate(:user, username: 'bob') }
-    let(:post1) { Fabricate(:post) }
-    let(:post2) { Fabricate(:post) }
+    fab!(:amy) { Fabricate(:user, username: 'amy') }
+    fab!(:bob) { Fabricate(:user, username: 'bob') }
+    fab!(:post1) { Fabricate(:post) }
+    fab!(:post2) { Fabricate(:post) }
     let(:topic1) { post1.topic }
     let(:topic2) { post2.topic }
 
@@ -98,8 +160,21 @@ describe IncomingLinksReport do
         Fabricate(:incoming_link, user: bob, post: post1).save
       end
 
-      expect(top_referrers[:data][0]).to eq({username: 'amy', user_id: amy.id, num_clicks: 3, num_topics: 2})
-      expect(top_referrers[:data][1]).to eq({username: 'bob', user_id: bob.id, num_clicks: 2, num_topics: 1})
+      expect(top_referrers[:data][0]).to eq(
+        user_avatar_template: User.default_template('amy'),
+        username: 'amy',
+        user_id: amy.id,
+        num_clicks: 3,
+        num_topics: 2
+      )
+
+      expect(top_referrers[:data][1]).to eq(
+        user_avatar_template: User.default_template('bob'),
+        username: 'bob',
+        user_id: bob.id,
+        num_clicks: 2,
+        num_topics: 1
+      )
     end
   end
 
@@ -129,10 +204,10 @@ describe IncomingLinksReport do
     end
 
     it 'with some IncomingLink records, it returns correct data' do
-      IncomingLinksReport.stubs(:link_count_per_domain).returns({'twitter.com' => 8, 'facebook.com' => 3})
-      IncomingLinksReport.stubs(:topic_count_per_domain).returns({'twitter.com' => 2, 'facebook.com' => 3})
-      expect(top_traffic_sources[:data][0]).to eq({domain: 'twitter.com', num_clicks: 8, num_topics: 2})
-      expect(top_traffic_sources[:data][1]).to eq({domain: 'facebook.com', num_clicks: 3, num_topics: 3})
+      IncomingLinksReport.stubs(:link_count_per_domain).returns('twitter.com' => 8, 'facebook.com' => 3)
+      IncomingLinksReport.stubs(:topic_count_per_domain).returns('twitter.com' => 2, 'facebook.com' => 3)
+      expect(top_traffic_sources[:data][0]).to eq(domain: 'twitter.com', num_clicks: 8, num_topics: 2)
+      expect(top_traffic_sources[:data][1]).to eq(domain: 'facebook.com', num_clicks: 3, num_topics: 3)
     end
   end
 
@@ -160,11 +235,13 @@ describe IncomingLinksReport do
     it 'with some IncomingLink records, it returns correct data' do
       topic1 = Fabricate.build(:topic, id: 123); topic2 = Fabricate.build(:topic, id: 234)
       # TODO: OMG OMG THE STUBBING
-      IncomingLinksReport.stubs(:link_count_per_topic).returns({topic1.id => 8, topic2.id => 3})
-      Topic.stubs(:select).returns(Topic); Topic.stubs(:where).returns(Topic) # bypass some activerecord methods
+      IncomingLinksReport.stubs(:link_count_per_topic).returns(topic1.id => 8, topic2.id => 3)
+      # bypass some activerecord methods
+      Topic.stubs(:select).returns(Topic)
+      Topic.stubs(:where).returns(Topic)
       Topic.stubs(:all).returns([topic1, topic2])
-      expect(top_referred_topics[:data][0]).to eq({topic_id: topic1.id, topic_title: topic1.title, topic_slug: topic1.slug, num_clicks: 8 })
-      expect(top_referred_topics[:data][1]).to eq({topic_id: topic2.id, topic_title: topic2.title, topic_slug: topic2.slug, num_clicks: 3 })
+      expect(top_referred_topics[:data][0]).to eq(topic_id: topic1.id, topic_title: topic1.title, topic_url: topic1.relative_url, num_clicks: 8)
+      expect(top_referred_topics[:data][1]).to eq(topic_id: topic2.id, topic_title: topic2.title, topic_url: topic2.relative_url, num_clicks: 3)
     end
   end
 

@@ -1,6 +1,12 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe ColorSchemeColor do
+  after do
+    ColorScheme.hex_cache.clear
+  end
+
   def test_invalid_hex(hex)
     c = described_class.new(hex: hex)
     expect(c).not_to be_valid

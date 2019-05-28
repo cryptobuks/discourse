@@ -1,29 +1,32 @@
 /* You might be looking for navigation-item. */
-
+import { iconHTML } from "discourse-common/lib/icon-library";
 import computed from "ember-addons/ember-computed-decorators";
-import { getOwner } from 'discourse-common/lib/get-owner';
 
 export default Ember.Component.extend({
-  tagName: 'li',
-  classNameBindings: ['active'],
+  tagName: "li",
+  classNameBindings: ["active"],
+  router: Ember.inject.service(),
 
-  @computed()
-  router() {
-    return getOwner(this).lookup('router:main');
+  @computed("label", "i18nLabel", "icon")
+  contents(label, i18nLabel, icon) {
+    let text = i18nLabel || I18n.t(label);
+    if (icon) {
+      return `${iconHTML(icon)} ${text}`.htmlSafe();
+    }
+    return text;
   },
 
-  @computed("path")
-  fullPath(path) {
-    return Discourse.getURL(path);
-  },
+  @computed("route", "router.currentRoute")
+  active(route, currentRoute) {
+    if (!route) {
+      return;
+    }
 
-  @computed("route", "router.url")
-  active(route) {
-    if (!route) { return; }
+    const routeParam = this.routeParam;
+    if (routeParam && currentRoute) {
+      return currentRoute.params["filter"] === routeParam;
+    }
 
-    const routeParam = this.get('routeParam'),
-          router = this.get('router');
-
-    return routeParam ? router.isActive(route, routeParam) : router.isActive(route);
+    return this.router.isActive(route);
   }
 });

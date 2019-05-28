@@ -1,4 +1,6 @@
-class DropGroupManagers < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class DropGroupManagers < ActiveRecord::Migration[4.2]
   def up
     # old data under old structure
     execute "UPDATE group_users SET owner = true

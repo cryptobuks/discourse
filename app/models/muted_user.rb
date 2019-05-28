@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class MutedUser < ActiveRecord::Base
   belongs_to :user
   belongs_to :muted_user, class_name: 'User'
@@ -10,8 +12,8 @@ end
 #  id            :integer          not null, primary key
 #  user_id       :integer          not null
 #  muted_user_id :integer          not null
-#  created_at    :datetime
-#  updated_at    :datetime
+#  created_at    :datetime         not null
+#  updated_at    :datetime         not null
 #
 # Indexes
 #

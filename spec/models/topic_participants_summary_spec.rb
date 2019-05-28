@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe TopicParticipantsSummary do
@@ -12,15 +14,16 @@ describe TopicParticipantsSummary do
       )
     end
 
-    let(:topic_creator) { Fabricate(:user) }
-    let(:user1) { Fabricate(:user) }
-    let(:user2) { Fabricate(:user) }
-    let(:user3) { Fabricate(:user) }
-    let(:user4) { Fabricate(:user) }
+    fab!(:topic_creator) { Fabricate(:user) }
+    fab!(:user1) { Fabricate(:user) }
+    fab!(:user2) { Fabricate(:user) }
+    fab!(:user3) { Fabricate(:user) }
+    fab!(:user4) { Fabricate(:user) }
+    fab!(:user5) { Fabricate(:user) }
 
-    it "must never contains the user and at most 3 participants" do
-      topic.allowed_user_ids = [user1.id, user2.id, user3.id, user4.id]
-      expect(summary.map(&:user)).to eq([user1, user2, user3])
+    it "must never contains the user and at most 4 participants" do
+      topic.allowed_user_ids = [user1.id, user2.id, user3.id, user4.id, user5.id]
+      expect(summary.map(&:user)).to eq([user1, user2, user3, user4])
     end
 
   end

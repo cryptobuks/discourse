@@ -1,7 +1,7 @@
-class PostSearchData < ActiveRecord::Base
-  belongs_to :post
+# frozen_string_literal: true
 
-  validates_presence_of :search_data
+class PostSearchData < ActiveRecord::Base
+  include HasSearchData
 end
 
 # == Schema Information
@@ -12,8 +12,10 @@ end
 #  search_data :tsvector
 #  raw_data    :text
 #  locale      :string
+#  version     :integer          default(0)
 #
 # Indexes
 #
-#  idx_search_post  (search_data)
+#  idx_search_post                                           (search_data) USING gin
+#  index_post_search_data_on_post_id_and_version_and_locale  (post_id,version,locale)
 #

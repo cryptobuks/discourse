@@ -1,4 +1,6 @@
-class AddUserAuthTokenLog < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class AddUserAuthTokenLog < ActiveRecord::Migration[4.2]
   def change
     create_table :user_auth_token_logs do |t|
       t.string :action, null: false

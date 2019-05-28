@@ -1,4 +1,6 @@
-class CorrectPostActionIndex < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CorrectPostActionIndex < ActiveRecord::Migration[4.2]
 
   def up
 

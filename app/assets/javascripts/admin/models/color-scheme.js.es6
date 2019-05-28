@@ -1,125 +1,141 @@
-import { ajax } from 'discourse/lib/ajax';
-import ColorSchemeColor from 'admin/models/color-scheme-color';
+import { ajax } from "discourse/lib/ajax";
+import ColorSchemeColor from "admin/models/color-scheme-color";
+import computed from "ember-addons/ember-computed-decorators";
 
 const ColorScheme = Discourse.Model.extend(Ember.Copyable, {
+  init() {
+    this._super(...arguments);
 
-  init: function() {
-    this._super();
     this.startTrackingChanges();
   },
 
-  description: function() {
-    return "" + this.name + (this.enabled ? ' (*)' : '');
-  }.property(),
-
-  startTrackingChanges: function() {
-    this.set('originals', {
-      name: this.get('name'),
-      enabled: this.get('enabled')
-    });
+  @computed
+  description() {
+    return "" + this.name;
   },
 
-  copy: function() {
-    var newScheme = ColorScheme.create({name: this.get('name'), enabled: false, can_edit: true, colors: Em.A()});
-    _.each(this.get('colors'), function(c){
-      newScheme.colors.pushObject(ColorSchemeColor.create({name: c.get('name'), hex: c.get('hex'), default_hex: c.get('default_hex')}));
+  startTrackingChanges() {
+    this.set("originals", { name: this.name });
+  },
+
+  schemeJson() {
+    const buffer = [];
+    this.colors.forEach(c => {
+      buffer.push(`  "${c.get("name")}": "${c.get("hex")}"`);
+    });
+
+    return [`"${this.name}": {`, buffer.join(",\n"), "}"].join("\n");
+  },
+
+  copy() {
+    const newScheme = ColorScheme.create({
+      name: this.name,
+      can_edit: true,
+      colors: Ember.A()
+    });
+    this.colors.forEach(c => {
+      newScheme.colors.pushObject(
+        ColorSchemeColor.create(c.getProperties("name", "hex", "default_hex"))
+      );
     });
     return newScheme;
   },
 
-  changed: function() {
+  @computed("name", "colors.@each.changed", "saving")
+  changed(name) {
     if (!this.originals) return false;
-    if (this.originals['name'] !== this.get('name') || this.originals['enabled'] !== this.get('enabled')) return true;
-    if (_.any(this.get('colors'), function(c){ return c.get('changed'); })) return true;
+    if (this.originals.name !== name) return true;
+    if (this.colors.any(c => c.get("changed"))) return true;
+
     return false;
-  }.property('name', 'enabled', 'colors.@each.changed', 'saving'),
+  },
 
-  disableSave: function() {
-    return !this.get('changed') || this.get('saving') || _.any(this.get('colors'), function(c) { return !c.get('valid'); });
-  }.property('changed'),
+  @computed("changed")
+  disableSave(changed) {
+    if (this.theme_id) {
+      return false;
+    }
 
-  disableEnable: function() {
-    return !this.get('id') || this.get('saving');
-  }.property('id', 'saving'),
+    return !changed || this.saving || this.colors.any(c => !c.get("valid"));
+  },
 
-  newRecord: function() {
-    return (!this.get('id'));
-  }.property('id'),
+  newRecord: Ember.computed.not("id"),
 
-  save: function(opts) {
-    if (this.get('is_base') || this.get('disableSave')) return;
+  save(opts) {
+    if (this.is_base || this.disableSave) return;
 
-    var self = this;
-    this.set('savingStatus', I18n.t('saving'));
-    this.set('saving',true);
+    this.setProperties({ savingStatus: I18n.t("saving"), saving: true });
 
-    var data = { enabled: this.enabled };
+    const data = {};
 
     if (!opts || !opts.enabledOnly) {
       data.name = this.name;
-
+      data.base_scheme_id = this.base_scheme_id;
       data.colors = [];
-      _.each(this.get('colors'), function(c) {
-        if (!self.id || c.get('changed')) {
-          data.colors.pushObject({name: c.get('name'), hex: c.get('hex')});
+      this.colors.forEach(c => {
+        if (!this.id || c.get("changed")) {
+          data.colors.pushObject(c.getProperties("name", "hex"));
         }
       });
     }
 
-    return ajax("/admin/color_schemes" + (this.id ? '/' + this.id : '') + '.json', {
-      data: JSON.stringify({"color_scheme": data}),
-      type: this.id ? 'PUT' : 'POST',
-      dataType: 'json',
-      contentType: 'application/json'
-    }).then(function(result) {
-      if(result.id) { self.set('id', result.id); }
-      if (!opts || !opts.enabledOnly) {
-        self.startTrackingChanges();
-        _.each(self.get('colors'), function(c) {
-          c.startTrackingChanges();
-        });
-      } else {
-        self.set('originals.enabled', data.enabled);
+    return ajax(
+      "/admin/color_schemes" + (this.id ? "/" + this.id : "") + ".json",
+      {
+        data: JSON.stringify({ color_scheme: data }),
+        type: this.id ? "PUT" : "POST",
+        dataType: "json",
+        contentType: "application/json"
       }
-      self.set('savingStatus', I18n.t('saved'));
-      self.set('saving', false);
-      self.notifyPropertyChange('description');
+    ).then(result => {
+      if (result.id) {
+        this.set("id", result.id);
+      }
+
+      if (!opts || !opts.enabledOnly) {
+        this.startTrackingChanges();
+        this.colors.forEach(c => c.startTrackingChanges());
+      }
+
+      this.setProperties({ savingStatus: I18n.t("saved"), saving: false });
+      this.notifyPropertyChange("description");
     });
   },
 
-  destroy: function() {
+  destroy() {
     if (this.id) {
-      return ajax("/admin/color_schemes/" + this.id, { type: 'DELETE' });
+      return ajax(`/admin/color_schemes/${this.id}`, { type: "DELETE" });
     }
   }
-
 });
 
-var ColorSchemes = Ember.ArrayProxy.extend({
-  selectedItemChanged: function() {
-    var selected = this.get('selectedItem');
-    _.each(this.get('content'),function(i) {
-      return i.set('selected', selected === i);
-    });
-  }.observes('selectedItem')
-});
+const ColorSchemes = Ember.ArrayProxy.extend({});
 
 ColorScheme.reopenClass({
-  findAll: function() {
-    var colorSchemes = ColorSchemes.create({ content: [], loading: true });
-    ajax('/admin/color_schemes').then(function(all) {
-      _.each(all, function(colorScheme){
-        colorSchemes.pushObject(ColorScheme.create({
-          id: colorScheme.id,
-          name: colorScheme.name,
-          enabled: colorScheme.enabled,
-          is_base: colorScheme.is_base,
-          colors: colorScheme.colors.map(function(c) { return ColorSchemeColor.create({name: c.name, hex: c.hex, default_hex: c.default_hex}); })
-        }));
+  findAll() {
+    const colorSchemes = ColorSchemes.create({ content: [], loading: true });
+    return ajax("/admin/color_schemes").then(all => {
+      all.forEach(colorScheme => {
+        colorSchemes.pushObject(
+          ColorScheme.create({
+            id: colorScheme.id,
+            name: colorScheme.name,
+            is_base: colorScheme.is_base,
+            theme_id: colorScheme.theme_id,
+            theme_name: colorScheme.theme_name,
+            base_scheme_id: colorScheme.base_scheme_id,
+            colors: colorScheme.colors.map(c => {
+              return ColorSchemeColor.create({
+                name: c.name,
+                hex: c.hex,
+                default_hex: c.default_hex
+              });
+            })
+          })
+        );
       });
-      colorSchemes.set('loading', false);
+      return colorSchemes;
     });
-    return colorSchemes;
   }
 });
 

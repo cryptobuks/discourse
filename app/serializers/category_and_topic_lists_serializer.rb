@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CategoryAndTopicListsSerializer < ApplicationSerializer
   has_one :category_list, serializer: CategoryListSerializer, embed: :objects
   has_one :topic_list, serializer: TopicListSerializer, embed: :objects
@@ -5,7 +7,7 @@ class CategoryAndTopicListsSerializer < ApplicationSerializer
 
   def users
     users = object.topic_list.topics.map do |t|
-      t.posters.map{|poster| poster.try(:user)}
+      t.posters.map { |poster| poster.try(:user) }
     end
     users.flatten!
     users.compact!

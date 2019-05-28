@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "csv"
 require File.expand_path(File.dirname(__FILE__) + "/base.rb")
 
@@ -59,7 +61,6 @@ class ImportScripts::Muut < ImportScripts::Base
     end
   end
 
-
   def import_categories
     puts "", "Importing categories"
 
@@ -72,7 +73,6 @@ class ImportScripts::Muut < ImportScripts::Base
     end
   end
 
-
   def import_discussions
     puts "", "Importing discussions"
 
@@ -80,7 +80,6 @@ class ImportScripts::Muut < ImportScripts::Base
     posts = 0
 
     @imported_json['categories'].each do |category|
-
 
       @imported_json['threads'][category['path']].each do |thread|
 
@@ -96,7 +95,7 @@ class ImportScripts::Muut < ImportScripts::Base
         end
 
         # update user display name
-        if thread["seed"]["author"] && thread["seed"]["author"]["displayname"] != ""  && mapped[:user_id] != -1
+        if thread["seed"]["author"] && thread["seed"]["author"]["displayname"] != "" && mapped[:user_id] != -1
           user = User.find_by(id: mapped[:user_id])
           if user
             user.name = thread["seed"]["author"]["displayname"]
@@ -181,6 +180,6 @@ class ImportScripts::Muut < ImportScripts::Base
 
 end
 
-if __FILE__==$0
+if __FILE__ == $0
   ImportScripts::Muut.new.perform
 end

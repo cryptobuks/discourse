@@ -1,6 +1,10 @@
+# frozen_string_literal: true
+
 class IncomingDomain < ActiveRecord::Base
   def self.add!(uri)
     name = uri.host
+    return unless name.present?
+
     https = uri.scheme == "https"
     port = uri.port
 
@@ -19,7 +23,7 @@ class IncomingDomain < ActiveRecord::Base
   end
 
   def to_url
-    url = "http#{https ? "s" : ""}://#{name}"
+    url = +"http#{https ? "s" : ""}://#{name}"
 
     if https && port != 443 || !https && port != 80
       url << ":#{port}"

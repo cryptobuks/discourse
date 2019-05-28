@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class TrustLevelGranter
 
   def initialize(trust_level, user)
@@ -11,7 +13,6 @@ class TrustLevelGranter
   def grant
     if @user.trust_level < @trust_level
       @user.change_trust_level!(@trust_level)
-      @user.trust_level_locked = true
       @user.save!
     end
   end

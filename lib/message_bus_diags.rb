@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class MessageBusDiags
 
   @host_info = {}
@@ -11,7 +13,7 @@ class MessageBusDiags
   end
 
   def self.establish_peer_names
-    MessageBus.publish "/server-name", {channel: "/server-name-reply/#{my_id}"}
+    MessageBus.publish "/server-name", channel: "/server-name-reply/#{my_id}"
   end
 
   def self.seen_hosts

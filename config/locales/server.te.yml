@@ -10,15 +10,17 @@ te:
     short_date_no_year: "D MMM"
     short_date: "D MMM, YYYY"
     long_date: "MMMM D, YYYY h:mma"
+  date:
+    month_names: [~, "", "", "", "", "", "", "", "", "", "", "", ""]
   title: "డిస్కోర్స్"
   topics: "విషయాలు"
   posts: "టపాలు"
   loading: "లోడవుతోంది"
-  powered_by_html: ' <a href="http://www.discourse.org">డిస్కౌర్స్</a> చేత శక్తివంతం చేయబడింది, జావాస్క్రిప్ట్ చేతనం చేస్తే బాగా కనిపిస్తుంది. '
   log_in: "లాగిన్"
   disable_remote_images_download_reason: "సుదూర బొమ్మల దిగుమతి అచేతనమైంది ఎందుకంటే డిస్క్ జాగా తక్కువగా ఉంది."
+  anonymous: "అనామక"
   errors: &errors
-    format: '%{attribute} %{message}'
+    format: "%{attribute} %{message}"
     messages:
       too_long_validation: "%{max} అక్షరాలకే పరిమితము. మీరు %{length} అక్షరాలు రాసారు."
       invalid_boolean: "చెల్లని బూలియన్"
@@ -28,19 +30,20 @@ te:
       present: తప్పనిసరిగా ఖాళీగా ఉండాలి
       confirmation: "%{attribute} కు జత అవ్వలేదు "
       empty: ఖాళీ ఉండకూడదు
-      equal_to: తప్పనిసరిగా %{count} కు సమానంగా ఉండాలి
+      equal_to: "తప్పనిసరిగా %{count} కు సమానంగా ఉండాలి"
       even: జతగా ఉండాలి
       exclusion: రక్షితము
-      greater_than: ' %{count} కన్నా ఎక్కువ ఉండాలి'
-      greater_than_or_equal_to: '%{count} కన్నా సమానం లేదా ఎక్కువ ఉండాలి'
+      greater_than: " %{count} కన్నా ఎక్కువ ఉండాలి"
+      greater_than_or_equal_to: "%{count} కన్నా సమానం లేదా ఎక్కువ ఉండాలి"
+      has_already_been_used: "ఇప్పటికే వాడుకలో ఉంది"
       inclusion: జాబితాలో జతపర్చబడలేదు
       invalid: చెల్లనిది
-      less_than: '%{count} కన్నా తక్కువ ఉండాలి'
-      less_than_or_equal_to: '%{count} కన్నా సమానం లేదా తక్కువగా ఉండాలి'
+      less_than: "%{count} కన్నా తక్కువ ఉండాలి"
+      less_than_or_equal_to: "%{count} కన్నా సమానం లేదా తక్కువగా ఉండాలి"
       not_a_number: సంఖ్య కాదు
       not_an_integer: తప్పనిసరిగా పూర్ణ సంఖ్య అయి ఉండాలి
       odd: తప్పనిసరి బేసి సంఖ్య కావాలి
-      record_invalid: 'సరిజూత విఫలమైంది: %{errors}'
+      record_invalid: "సరిజూత విఫలమైంది: %{errors}"
       restrict_dependent_destroy:
         one: "రికార్డు తొలగించలేము. ఎందుకంటే ఆధారిత  %{record} ఉంది"
         many: "రికార్డు తొలగించలేము. ఎందుకంటే ఆధారిత  %{record} ఉంది"
@@ -55,12 +58,15 @@ te:
         other: సరైన పొడుగు కాదు. (తప్పనిసరి %{count}  అక్షరాలు ఉండాలి)
       other_than: "%{count} కాకుండా వేరే అవ్వాలి"
     template:
-      body: 'ఈ దిగువ క్షేత్రాలతో సమస్య ఉంది'
+      body: "ఈ దిగువ క్షేత్రాలతో సమస్య ఉంది"
       header:
-        one: ఒక దోషం వల్ల ఈ %[model] భద్రపరుచుట వీలవలేదు
-        other: '%{count} దోషాల వల్ల  %{model} భద్రపరుచుట వీలవలేదు'
+        one: "ఒక దోషం వల్ల ఈ %[model] భద్రపరుచుట వీలవలేదు"
+        other: "%{count} దోషాల వల్ల  %{model} భద్రపరుచుట వీలవలేదు"
     embed:
       load_from_remote: "ఈ టపా లోడింగులో దోషం"
+  activemodel:
+    errors:
+      <<: *errors
   backup:
     operation_already_running: "ఒక పరిక్రియ ప్రస్తుతం జరుగుతోంది. కొత్త పని ఇప్పుడు మొదలుపెట్టవీలవదు."
     backup_file_should_be_tar_gz: "బ్యాకప్ దస్త్రం తప్పనిసరి .tar.gz కట్ట అయి ఉండాలి."
@@ -69,6 +75,7 @@ te:
   not_found: "అభ్యర్థించిన URL లేదా వనరు దొరకలేదు."
   invalid_access: "అభ్యర్థించిన వనరు వీక్షించడానికి మీకు అనుమతి లేదు."
   read_only_mode_enabled: "సైటు కేవలం చదివే రీతిలో ఉంది. చర్చలు ఇప్పుడు అచేతనం."
+  likes: "ఇష్టాలు"
   too_many_replies:
     one: "క్షమించాలి. కొత్త సభ్యులు తాత్కాలికంగా ఒక విషయానికి  ఒక జవాబుకు మాత్రమే పరిమితం చేయబడ్డారు"
     other: "క్షమించాలి. కొత్త సభ్యులు, తాత్కాలికంగా ఒక విషయానికి %{count} జవాబులకు మాత్రమే పరిమితం చెయ్యబడ్డారు."
@@ -82,9 +89,11 @@ te:
     permalink: "శాస్వత లంకె"
     imported_from: "%{link} వద్ద మూల పద్దుకు జోడు చర్చా విషయం ఉంది."
     in_reply_to: "▶ %{username}"
-    replies:
-      one: "ఒక జవాబు"
-      other: "%{count} జవాబులు"
+  no_mentions_allowed: "క్షమించాలి. మీరు ఇతర సభ్యులను ప్రస్తావించలేరు"
+  no_mentions_allowed_newuser: "క్షమించాలి. కొత్త సభ్యులు ఇతర సభ్యులను ప్రస్తావించలేరు."
+  no_images_allowed: "క్షమించాలి. కొత్త సభ్యులు టపాలో బొమ్మలు ఉంచలేరు."
+  no_attachments_allowed: "క్షమించాలి. కొత్త సభ్యులు టపాలో జోడింపులు ఉంచవీలవదు."
+  no_links_allowed: "క్షమించాలి, కొత్త సభ్యులు టపాలో లంకెలు ఉంచవీలవదు."
   spamming_host: "క్షమించాలి. ఆ అతిధికి మీరు లంకె టపా చెయ్యలేరు."
   user_is_suspended: "సస్పెండైన సభ్యులు టపా రాయుట వీలవదు"
   topic_not_found: "ఏదో తప్పు జరిగింది. బహుశా ఈ అంశం ముగిసింది లేదా మీరు చూస్తూ ఉండగా తొలగించబడింది?"
@@ -119,7 +128,7 @@ te:
     until_posts:
       one: "ఒక టపా"
       other: "%{count} టపాలు"
-    new-reply: |
+    "new-reply": |
       స్వాగతం %{site_name} &mdash; **పాల్గొన్నందుకు ధన్యవాదాలు!**
 
       - మీ సమాధానం సంభాషణను కొంత మెరుగు పరిచిందా ?
@@ -128,24 +137,25 @@ te:
 
       - నిర్మాణాత్మక విమర్శలకు స్వాగతం, కానీ *ఆలోచన*లను విమర్శించండి,వ్యక్తులని కాదు.
 
-
-      మరింత సమాచారం కోసం ,[వర్గ మార్గదర్శక సూత్రాలను చూడండి](/guidelines).ఈ పట్టిక మొదట మీకే కనిపిస్తుంది%{education_posts_text}.
+      మరింత సమాచారం కోసం ,[వర్గ మార్గదర్శక సూత్రాలను చూడండి](%{base_path}/guidelines).ఈ పట్టిక మొదట మీకే కనిపిస్తుంది%{education_posts_text}.
   activerecord:
     attributes:
       category:
         name: "వర్గం పేరు"
+      topic:
+        title: "శీర్షిక"
+        category_id: "వర్గం"
       post:
         raw: "శరీరం"
       user_profile:
         bio_raw: "నా గురించి"
     errors:
+      <<: *errors
       models:
         topic:
           attributes:
             base:
-              warning_requires_pm: "ప్రైవేటు సందేశాలకు మీరు కేవలం హెచ్చరికలు మాత్రమే జోడించగలరు"
               too_many_users: "మీరు హెచ్చరికలు ఒక పర్యాయం కేవలం ఒక సభ్యునికి మాత్రమే పంపగలరు."
-              cant_send_pm: "క్షమించాలి. ఆ సభ్యునికి మీరు ప్రైవేటు సందేశం పంపలేరు."
               no_user_selected: "మీరు ఒక సభ్యుడిని ఎంచుకోవాలి."
         user:
           attributes:
@@ -159,9 +169,6 @@ te:
           attributes:
             hex:
               invalid: "ఇది చెల్లని రంగు"
-      <<: *errors
-  user_profile:
-    no_info_other: "<div class='missing-profile'>%{పేరు} ఇంకా వారి ప్రొఫైల్ లో ఎబౌట్ మీ స్థానంలో ఏమీ చేర్చలేదు</div>"
   vip_category_name: "అడ్డా"
   vip_category_description: "నమ్మకం స్థాయి మూడు లేదా ఆపై ఉన్న సభ్యులకు మాత్రమే పరిమితమైన వర్గం"
   meta_category_description: "ఈ సైటు గురించి చర్చ. ఎలా మొదలైంది. ఎలా పని చేస్తుంది. ఇంకా ఎలా మెరుగు పరచవచ్చు."
@@ -176,19 +183,20 @@ te:
       self_parent: "ఉప వర్గపు తండ్రి అదే వర్గం అవ్వకూడదు"
       depth: "మీరు ఒక ఉపవర్గాన్ని మరోదాని కింద ఉంచకూడదు"
     cannot_delete:
-      uncategorized: "అవర్గీకృతాన్ని తొలగించలేరు"
       has_subcategories: "ఈ వర్గాన్ని తొలగించలేరు. ఎందుకంటే దీనికి ఉప వర్గాలు ఉన్నాయి."
-      topic_exists:
-        one: "ఈ వర్గాన్ని తొలగించలేరు. ఎందుకంటే దీనిలో ఒక విషయం ఉంది. పురాతన విషయం %{topic_link}."
-        other: "ఈ వర్గాన్ని తొలగించలేరు. ఎందుకంటే దీనిలో %[count] విషయాలు ఉన్నాయి. పురాతన విషయం %{topic_link}."
       topic_exists_no_oldest: "ఈ వర్గాన్ని తొలగించలేరు. ఎందుకంటే దీనిలో %{count} విషయాలు ఉన్నాయి."
   trust_levels:
     newuser:
       title: "కొత్త సభ్యుడు"
     basic:
       title: "ప్రాథమిక సభ్యుడు"
+    member:
+      title: "మెంబరు"
+    regular:
+      title: "రెగ్యులర్"
+    leader:
+      title: "లీడర్"
   rate_limiter:
-    too_many_requests: "ఈ చర్యకు రోజువారీపరిమితి ఉంది. దయచేసి %{time_left} సమయం తర్వాత ప్రయత్నించండి"
     hours:
       one: "ఒక గంట"
       other: "%{count} గంటలు"
@@ -202,45 +210,43 @@ te:
     distance_in_words:
       half_a_minute: "< 1ని"
       less_than_x_seconds:
-        one: "< 1సె"
+        one: "< %{count}సె"
         other: "<%{count}సె"
       x_seconds:
-        one: "1సె"
+        one: "%{count}సె"
         other: "%{count}సె"
       less_than_x_minutes:
-        one: "< 1ని"
+        one: "< %{count}ని"
         other: "< %{count}ని"
       x_minutes:
-        one: "1ని"
+        one: "%{count}ని"
         other: "%{count}ని"
       about_x_hours:
-        one: "1గం"
+        one: "%{count}గం"
         other: "%{count}గం"
       x_days:
-        one: "1రో"
+        one: "%{count}రో"
         other: "%{count}రో"
       about_x_months:
-        one: "1నెల"
+        one: "%{count}నెల"
         other: "%{count}నెల"
       x_months:
-        one: "1నెల"
+        one: "%{count}నెల"
         other: "%{count}నెల"
       about_x_years:
-        one: "1సం"
+        one: "%{count}సం"
         other: "%{count}సం"
       over_x_years:
-        one: "> 1సం"
+        one: "> %{count}సం"
         other: "> %{count}సం"
       almost_x_years:
-        one: "1సం"
+        one: "%{count}సం"
         other: "%{count}సం"
     distance_in_words_verbose:
       half_a_minute: "ఇప్పుడే"
-      less_than_x_seconds:
-        one: "ఇప్పుడే"
-        other: "ఇప్పుడే"
+      less_than_x_seconds: "ఇప్పుడే"
       x_seconds:
-        one: "1 సెకన్ వెనుక"
+        one: "%{count} సెకన్ వెనుక"
         other: "%{count} సెకన్ల వెనుక"
       less_than_x_minutes:
         one: "ఒక్క నిమిషం ముందు"
@@ -249,10 +255,10 @@ te:
         one: "ఒక్క నిమిషం ముందు"
         other: "%{count} నిమిషాలు ముందు"
       about_x_hours:
-        one: "1 గంట ముందు"
+        one: "%{count} గంట ముందు"
         other: "%{count} గంటల ముందు"
       x_days:
-        one: "1 రోజు ముందు"
+        one: "%{count} రోజు ముందు"
         other: "%{count} రోజుల ముందు"
       about_x_months:
         one: "రమారమీ ఒక మాసం ముందు"
@@ -270,9 +276,9 @@ te:
         one: "అటో ఇటో ఒక సంవత్సరం వెనుక"
         other: "అటోఇటో %{count} సంవత్సరాల ముందు"
   password_reset:
-    update: 'సంకేతపదం ఉన్నతీకరించండి'
-    save: 'సంకేతపదం అమర్చండి'
-    title: 'సంకేతపదం రీసెట్ చెయ్యండి'
+    update: "సంకేతపదం ఉన్నతీకరించండి"
+    save: "సంకేతపదం అమర్చండి"
+    title: "సంకేతపదం రీసెట్ చెయ్యండి"
     success: "మీరు విజయవంతంగా మీ సంకేతపదం మార్చారు ఇంకా ఇప్పుడు లాగిన్ అయ్యారు కూడా."
     success_unapproved: "మీరు విజయవంతంగా సంకేతపదం మార్చారు."
   change_email:
@@ -287,19 +293,17 @@ te:
     approval_required: "ఈ ఫోరమ్ మీరు వాడేముందు ఒక నిర్వాహకుడు మీ ఖాతాను అంగీకరించాలి. మీ ఖాతా అంగీకరించగానే మీకు ఒక ఈమెయిల్ వస్తుంది."
   post_action_types:
     off_topic:
-      title: 'విషయాంతరం'
-      description: ' శీర్షిక మరియు తొలి టపా ప్రకారం ఈ టపా ప్రస్తుత చర్చకు సంబంధంలేనిది. బహుశా వేరేచోటుకు తరలించాలేమో.'
-      long_form: 'దీన్ని విషయాంతరంగా కేతనించాము'
+      title: "విషయాంతరం"
+      description: " శీర్షిక మరియు తొలి టపా ప్రకారం ఈ టపా ప్రస్తుత చర్చకు సంబంధంలేనిది. బహుశా వేరేచోటుకు తరలించాలేమో."
+      long_form: "దీన్ని విషయాంతరంగా కేతనించాము"
     spam:
-      title: 'స్పాము'
-      description: 'ఈ టపా వాణిజ్య ప్రకటన. ప్రస్తుత విషయానికి ఉపయోగకరమైనది కాదు, సంబందించినదీ కాదు. కానీ మార్కెటింగు స్వభావితమైనది.'
-      long_form: 'దీన్ని స్పాముగా కేతనించాము'
+      title: "స్పాము"
+      long_form: "దీన్ని స్పాముగా కేతనించాము"
       email_title: '"%{title}" ప్పాముగా కేతనించాము'
       email_body: "%{link}\n\n%{message}"
     inappropriate:
-      title: 'అసమంజసమైనది'
-      description: 'ఈ టపాలో విషయం కొంతమందికి అభ్యంతరకరమైనది, అగౌరవపరిచేది లేదా <a href="/guidelines">మా కమ్యునిటీ మార్గదర్శకాలకు</a> లోబడినది కాదు.'
-      long_form: 'దీన్ని అసమంజసమైనదిగా కేతనించాము'
+      title: "అసమంజసమైనది"
+      long_form: "దీన్ని అసమంజసమైనదిగా కేతనించాము"
     notify_user:
       email_title: '"%{title}" లో మీ టపా'
       email_body: "%{link}\n\n%{message}"
@@ -307,49 +311,80 @@ te:
       title: "వేరే ఏదో"
       email_body: "%{link}\n\n%{message}"
     bookmark:
-      title: 'పేజీక'
-      description: 'ఈ టపాకు పేజీక ఉంచు'
-      long_form: 'ఈ టపాకు పేజీక ఉంచారు'
+      title: "పేజీక"
+      description: "ఈ టపాకు పేజీక ఉంచు"
+      short_description: "ఈ టపాకు పేజీక ఉంచు"
+      long_form: "ఈ టపాకు పేజీక ఉంచారు"
     like:
-      title: 'ఇష్టం'
-      description: 'ఈ టపాను ఇష్టపడు'
-      long_form: 'ఈ టపాను ఇష్టపడ్డారు'
-    vote:
-      title: 'వోటు'
-      description: 'ఈ టపాకు ఓటు వేయి'
-      long_form: 'ఈ టపాకు వోటు వేసారు'
+      title: "ఇష్టం"
+      description: "ఈ టపాను ఇష్టపడు"
+      short_description: "ఈ టపాను ఇష్టపడు"
+      long_form: "ఈ టపాను ఇష్టపడ్డారు"
   topic_flag_types:
     spam:
-      title: 'స్పాము'
-      description: 'ఈ విషయం వాణిజ్య ప్రకటన. ఇది ఎట్టి ఉపయోగం లేనిదీ, ఈ సైటుకు సంబంధం లేనిది మార్కెటింగు గిమ్మిక్కు.'
-      long_form: 'దీన్ని స్పాముగా కేతనించారు'
+      title: "స్పాము"
+      description: "ఈ విషయం వాణిజ్య ప్రకటన. ఇది ఎట్టి ఉపయోగం లేనిదీ, ఈ సైటుకు సంబంధం లేనిది మార్కెటింగు గిమ్మిక్కు."
+      long_form: "దీన్ని స్పాముగా కేతనించారు"
     inappropriate:
-      title: 'అసమంజసం'
-      description: 'ఈ అంశంలో ఉన్న విషయం ద్వారా ఒక సహేతుకమైన వ్యక్తిని ప్రమాదకరమైన,అసంబధ్ధమైనవానిగా పరిగణిస్తారు,లేదా <a href="/guidelines"> మన వర్గ మార్గదర్శకాల ఉల్లంఘన జరుగుతుంది</a>.'
-      long_form: 'దీన్ని అసమంజసమైనదిగా కేతనించారు'
+      title: "అసమంజసం"
+      long_form: "దీన్ని అసమంజసమైనదిగా కేతనించారు"
     notify_moderators:
       title: "వేరే ఏదో"
-      long_form: 'దీన్ని నిర్వాహకుల దృష్టికి తెచ్చారు'
+      long_form: "దీన్ని నిర్వాహకుల దృష్టికి తెచ్చారు"
       email_title: '"%{title}" విషయం నిర్వాహకుల దృష్టిలో ఉంది.'
       email_body: "%{link}\n\n%{message}"
   flagging:
-    user_must_edit: '<p>ఈ టపా కమ్యునిటీ కేతనించింది. తాత్కాలికంగా దాచబడింది</p>'
+    user_must_edit: "<p>ఈ టపా కమ్యునిటీ కేతనించింది. తాత్కాలికంగా దాచబడింది</p>"
   archetypes:
     regular:
       title: "రెగ్యులర్ విషయం"
     banner:
+      title: "బ్యానరు విషయం"
       message:
         make: "ఈ విషయం ఇప్పుడు బ్యానరు. సభ్యుడు తుడిచే వరకూ ఈ విషయం ప్రతి పుటకు అగ్రభాగాన కనిపిస్తుంది."
         remove: "ఈ విషయం ఇప్పుడు బ్యానరు కాదు. ఇహ అది ప్రతి పుట అగ్రభాగానా కనిపించదు"
+  unsubscribe:
+    log_out: "లాగవుట్"
+    digest_frequency:
+      never: "ఎప్పటికీ వద్దు"
+      daily: "ప్రతిరోజూ"
+      weekly: "ప్రతీవారం"
   reports:
+    default:
+      labels:
+        day: రోజు
+    post_edits:
+      labels:
+        editor: ఎడిటరు
+        edit_reason: కారణం
+    user_flagging_ratio:
+      labels:
+        user: సభ్యుడు
+    moderators_activity:
+      labels:
+        moderator: నిర్వాహకుడు
+    flags_status:
+      labels:
+        flag: రకం
     visits:
       title: "సభ్యుని గణాంకాలు"
       xaxis: "రోజు"
       yaxis: "దర్శనాల సంఖ్య"
     signups:
-      title: "కొత్త వినియోగదారులు"
       xaxis: "రోజు"
-      yaxis: "కొత్త సభ్యుల సంఖ్య"
+    new_contributors:
+      xaxis: "రోజు"
+    consolidated_page_views:
+      yaxis: "రోజు"
+      labels:
+        editor: ఎడిటరు
+        edit_reason: కారణం
+    dau_by_mau:
+      xaxis: "రోజు"
+    daily_engaged_users:
+      xaxis: "రోజు"
+    profile_views:
+      xaxis: "రోజు"
     topics:
       title: "విషయాలు"
       xaxis: "రోజు"
@@ -370,20 +405,26 @@ te:
       title: "పేజీకలు"
       xaxis: "రోజు"
       yaxis: "కొత్త పేజీకల సంఖ్య"
-    starred:
-      title: "చుక్కేసినవి"
-      xaxis: "రోజు"
-      yaxis: "కొత్తగా చుక్కపెట్టిన విషయాలు"
     users_by_trust_level:
       title: "నమ్మకపు స్థాయి వారీగా సభ్యులు"
       xaxis: "నమ్మకం స్థాయి"
       yaxis: "సభ్యుల సంఖ్య"
+    users_by_type:
+      xaxis: "రకం"
+      yaxis: "సభ్యుల సంఖ్య"
+      labels:
+        type: రకం
+      xaxis_labels:
+        admin: అధికారి
+        moderator: నిర్వాహకుడు
+        suspended: సస్పెడయ్యాడు
     emails:
       title: "పంపిన ఈమెయిల్ల సంఖ్య"
       xaxis: "రోజు"
       yaxis: "ఈమెయిల్ల సంఖ్య"
     user_to_user_private_messages:
-      title: "సభ్యుని నుండి సభ్యునికి"
+      xaxis: "రోజు"
+    user_to_user_private_messages_with_replies:
       xaxis: "రోజు"
     system_private_messages:
       title: "వ్వవస్థ"
@@ -402,16 +443,25 @@ te:
       xaxis: "సభ్యుడు"
       num_clicks: "నొక్కులు"
       num_topics: "విషయాలు"
+      labels:
+        user: "సభ్యుడు"
+        num_clicks: "నొక్కులు"
+        num_topics: "విషయాలు"
     top_traffic_sources:
       title: "అగ్ర ట్రాఫిక్ మూలాలు"
       xaxis: "డొమైను"
       num_clicks: "నొక్కులు"
       num_topics: "విషయాలు"
       num_users: "సభ్యులు"
+      labels:
+        domain: డొమైను
+        num_clicks: నొక్కులు
+        num_topics: విషయాలు
     top_referred_topics:
       title: "అగ్ర రిఫరరు విషయాలు"
-      xaxis: "విషయం"
-      num_clicks: "నొక్కులు"
+      labels:
+        num_clicks: "నొక్కులు"
+        topic: "విషయం"
     page_view_anon_reqs:
       title: "అనామక"
       xaxis: "రోజు"
@@ -419,10 +469,12 @@ te:
       title: "లాగిన్ అయిన"
       xaxis: "రోజు"
     page_view_crawler_reqs:
-      title: "జాల క్రాలర్లు"
       xaxis: "రోజు"
     page_view_total_reqs:
-      title: "మొత్తం"
+      xaxis: "రోజు"
+    page_view_logged_in_mobile_reqs:
+      xaxis: "రోజు"
+    page_view_anon_mobile_reqs:
       xaxis: "రోజు"
     http_background_reqs:
       title: "వెనుతలం"
@@ -448,14 +500,33 @@ te:
       title: "మొత్తం"
       xaxis: "రోజు"
       yaxis: "మొత్తం అభ్యర్థనలు"
+    time_to_first_response:
+      xaxis: "రోజు"
+    topics_with_no_response:
+      xaxis: "రోజు"
+      yaxis: "మొత్తం"
+    mobile_visits:
+      xaxis: "రోజు"
+      yaxis: "దర్శనాల సంఖ్య"
+    suspicious_logins:
+      labels:
+        user: సభ్యుడు
+        location: ప్రాంతం
+    staff_logins:
+      labels:
+        user: సభ్యుడు
+        location: ప్రాంతం
+    top_uploads:
+      labels:
+        filename: దస్త్రం పేరు
   dashboard:
     rails_env_warning: "మీ సర్వరు %(env) రీతిలో నడుస్తోంది"
     host_names_warning: "మీ config/database.yml దస్త్రం అప్రమేయ లోకల్ హోస్ట్ వాడుతున్నది. దాన్ని మీ సైటు పేరుకు మార్చగలరు. "
-    memory_warning: 'మీ సర్వరు ఒక జీబీ కన్నా తక్కువ మెమరీతో నడుస్తున్నది. కనీసం ఒక జీబీ అయినా ఉండుట మంచిది. '
+    queue_size_warning: "వరుసలో ఉన్న ఉద్యోగాల సంఖ్య %{queue_size}, ఏది ఆధిక్యత.ఈ సైడ్‌కిక్ ప్రక్రియ(లు) ఒక సమస్య సూచిస్తుంది , లేదా \nమీకు మరింతమంది సైడ్‌కిక్ కార్మికులు అవసరం కావచ్చు."
+    memory_warning: "మీ సర్వరు ఒక జీబీ కన్నా తక్కువ మెమరీతో నడుస్తున్నది. కనీసం ఒక జీబీ అయినా ఉండుట మంచిది. "
   site_settings:
     censored_words: "వీటితో పదాలు స్వయంచాలకంగా భర్తీ చేయబడతాయి &#9632;&#9632;&#9632;&#9632;"
     delete_old_hidden_posts: "30 రోజుల కంటే ఎక్కువ దాగివున్న టపాలు స్వయంసిధ్ధంగా తొలగింపబడతాయి."
-    default_locale: "ఈ సంభాషణ సమయంలో అప్రమేయ భాష (ISO 639-1 Code)"
     allow_user_locale: "వినియోగదారులు వారి సొంత భాష ఇంటర్ఫేస్ ప్రాధాన్యతను ఎంచుకోవడానికి అనుమతించు"
     min_post_length: "టపా అనుమతించే అక్షరాల కనిష్ఠ పొడవు"
     max_post_length: "టపా అనుమతించే అక్షరాల గరిష్ఠ పొడవు"
@@ -468,12 +539,11 @@ te:
     title: "ఈ సైట్ యొక్క పేరు ,టైటిల్ ట్యాగ్ లో ఉపయోగించారు."
     site_description: "మెటా వివరణ ట్యాగ్ ఉపయోగించి ఈ సైట్‌ని ఒక వాక్యంలో వివరించండి."
     download_remote_images_threshold: "సుదూర చిత్రాలను స్థానికంగా దిగుమతి చేయడానికి అవసరమయ్యే కనీస డిస్క్ స్థలం (శాతం లో)"
-    post_edit_time_limit: "రచయిత వారు చేసిన టపా (n) నిమిషాల తర్వాత సవరించవచ్చు లేదా తొలగించవచ్చు. ఎప్పటికీ 0 అమర్చుము."
+    editing_grace_period: "టపా చేసిన తర్వాత (n) సెకన్లు, టపా చరిత్రలో ఒక కొత్త కధనం సృష్టించడానికి సవరింపు కుదరదు."
     max_image_width: "ఒక టపాలో థంబ్నైల్ గరిష్ట వెడల్పు"
     max_image_height: "ఒక టపాలో థంబ్నైల్ గరిష్ట ఎత్తు"
-    show_subcategory_list: "ఒక అంశం జాబితా వర్గంలో నమోదు చేసేటప్పుడు బదులుగా ఉపవర్గం జాబితా చూపించు."
     post_excerpt_maxlength: "ఒక టపా సంగ్రహం/సారాంశం గరిష్ట పొడవు."
-    allow_moderators_to_create_categories: "మధ్యవర్తులు కొత్త వర్గాలు సృష్టించడానికి అనుమతించు"
+    moderators_create_categories: "మధ్యవర్తులు కొత్త వర్గాలు సృష్టించడానికి అనుమతించు"
     topics_per_period_in_top_summary: "అప్రమేయ అగ్ర విషయాల సారాంశంలో చూపే అగ్ర విషయాల సంఖ్య."
     invite_expiry_days: "వాడుకరుల ఆహ్వాన కీ ఎన్ని రోజులు చెల్లుతుంది"
     min_password_length: "సంకేతపదపు కనీస పొడవు."
@@ -496,6 +566,7 @@ te:
     newuser_max_links: "కొత్త వాడుకరి టపా కి ఎన్ని లంకెలు జోడించవచ్చు."
     newuser_max_images: "కొత్త వాడుకరి టపా కి ఎన్ని చిత్రాలు జోడించవచ్చు."
     newuser_max_attachments: "కొత్త వాడుకరి టపా కి ఎన్నిఅనుబంధాలు జోడించవచ్చు"
+    emoji_set: "మీ ఇమోజి ఎలా ఉండాలి? "
     errors:
       invalid_email: "చెల్లని ఈమెయిలు చిరునామా."
       invalid_username: "ఆ పేరుతో ఏ వాడురకీ లేరు."
@@ -505,31 +576,33 @@ te:
       invalid_string_max: "%{max} కంటే ఎక్కువ అక్షరాలు ఉండకూడదు."
   search:
     types:
-      category: 'వర్గాలు'
-      topic: 'ఫలితాలు'
-      user: 'సభ్యులు'
+      category: "వర్గాలు"
+      topic: "ఫలితాలు"
+      user: "సభ్యులు"
   original_poster: "మూల టపా రచయిత"
   most_posts: "అధిక టపాలు"
   most_recent_poster: "ఇటీవలి పోస్టర్"
   frequent_poster: "తరచూ వచ్చే పోస్టర్"
   topic_statuses:
+    autoclosed_disabled: "ఈ విషయం ఇప్పుడు తెరవబడింది.కొత్త జవాబులకు అనుమతి."
     autoclosed_disabled_lastpost: "ఈ విషయం ఇప్పుడు తెరవబడింది.కొత్త జవాబులకు అనుమతి."
   login:
     incorrect_username_email_or_password: "తప్పు సభ్యుని పేరు లేదా ఈమెయిల్ లేదా సంకేతపదం"
     active: "మీ ఖాతా చేతనమైంది మరియు వాడటానికి సిద్దంగా ఉంది."
+    admin_not_allowed_from_ip_address: "మీరు ఆ IP చిరునామా నుండి నిర్వాహకుని వలె లాగిన్ కాలేరు."
     suspended: "మీరు %{date}. తారీకు వరకు లాగిన్ అవ్వలేరు"
     errors: "%{errors}"
     not_available: "అందుబాటులో లేదు. %{suggestion} ప్రయత్నించండి?"
     new_registrations_disabled: "కొత్త ఖాతా నమోదులను ప్రస్తుతం అనుమతించడం లేదు."
     password_too_long: "సంకేతపదాలు 200 అక్షరాలకు పరిమితం"
     missing_user_field: "మీరు అన్ని సభ్య క్షేత్రాలూ నింపలేదు"
-    close_window: "ద్రువీకరణ ముగిసింది. ఈ విండోను మూసి కొనసాగండి"
+  admin:
+    email:
+      sent_test: "పంపారు!"
   user:
-    no_accounts_associated: "ఎటువంటి ఖాతాలు భాగమవలేదు"
     username:
       short: "కనీసం %[min] అక్షరాలు ఉండాలి"
       long: "గరిష్టం %{max} అక్షరాలు ఉండాలి"
-      characters: "కేవలం సంఖ్యలు, అక్షరాలు మరియు అండర్ స్కోరు మాత్రమే ఉండాలి. "
       unique: "ఏకైకంగా ఉండాలి"
       blank: "తప్పనిసరిగా ఉండాలి"
     email:
@@ -542,33 +615,36 @@ te:
       subject_template: "%{site_name} కు సుస్వాగతం!"
   user_notifications:
     previous_discussion: "గత జవాబులు"
-    user_replied:
-      subject_template: "[%{site_name}] %{topic_title}"
     digest:
+      liked_received: "అందుకున్న ఇష్టాలు"
+      new_users: "కొత్త వినియోగదారులు"
+      join_the_discussion: "ఇంకా చదువు"
       click_here: "ఇక్కడ క్లిక్ చేయండి"
-    account_created:
-      subject_template: "[%{site_name}] మీ కొత్త ఖాతా"
+    forgot_password:
+      title: "సంకేతపదం మర్చిపోయా"
+    set_password:
+      title: "సంకేతపదం అమర్చండి"
   page_not_found:
     popular_topics: "ప్రముఖ"
     recent_topics: "తాజా"
     see_more: "ఇంకా"
     search_title: "ఈ సైట్ వెదుకు"
-    search_google: "గూగుల్"
+    search_button: "వెతుకు"
   terms_of_service:
     title: "సేవా నియమాలు"
-    signup_form_message: 'నేను <a href="/tos" target="_blank">సేవా నియమాలను</a> చదివాను, వాటికి అంగీకరిస్తున్నాను.'
-  deleted: 'తొలగించారు'
+  deleted: "తొలగించారు"
+  image: "బొమ్మ"
   upload:
     images:
       size_not_found: "క్షమించండి, కానీ మేము చిత్రం యొక్క పరిమాణం నిర్ణయించలేదు. బహుశా మీ చిత్రం పాడై ఉండవచ్చు?"
-  email_log:
-    seen_recently: "వినియోగదారు కొత్తగా చూశారు"
-    notification_already_read: "ఈ ఈమెయిల్ గురించి ప్రకటన ఇప్పటికే చదివబడింది"
-    post_deleted: "టపా రచయితచే తొలగింపబడింది"
-    user_suspended: "వినియోగదారు నిలిపివేయబడ్డారు"
-    already_read: "వినియోగదారు ఇప్పటికే ఈ టపా చదివారు"
-    message_blank: "ఖాళీ సందేశం"
-    body_blank: "ముఖ్యభాగం ఖాళీగా ఉంది"
+  skipped_email_log:
+    user_email_seen_recently: "వినియోగదారు కొత్తగా చూశారు"
+    user_email_notification_already_read: "ఈ ఈమెయిల్ గురించి ప్రకటన ఇప్పటికే చదివబడింది"
+    user_email_post_deleted: "టపా రచయితచే తొలగింపబడింది"
+    user_email_user_suspended: "వినియోగదారు నిలిపివేయబడ్డారు"
+    user_email_already_read: "వినియోగదారు ఇప్పటికే ఈ టపా చదివారు"
+    sender_message_blank: "ఖాళీ సందేశం"
+    sender_body_blank: "ముఖ్యభాగం ఖాళీగా ఉంది"
   color_schemes:
     base_theme_name: "ఆధారం"
   about: "గురించి"
@@ -584,6 +660,105 @@ te:
     title: "సేవా నిబంధనలు"
   privacy_topic:
     title: "ప్రైవసీ పోలసీ"
-  activemodel:
-    errors:
-      <<: *errors
+  badges:
+    editor:
+      name: ఎడిటరు
+      description: తొలి టపా సవరణ
+    basic_user:
+      name: ప్రాథమిక
+    member:
+      name: సభ్యుడు
+    regular:
+      name: రెగ్యులరు
+    leader:
+      name: లీడరు
+    welcome:
+      name: సుస్వాగతం
+      description: ఒక ఇష్టాన్ని అందుకున్నారు
+    autobiographer:
+      name: ఆత్మకధావాది
+    anniversary:
+      name: వార్షికోత్సవం
+      description: "ఒక సంవత్సరం నుండి చురుకైన సభ్యుడు, కనీసం ఒకసారి టపా చేశాడు"
+    nice_topic:
+      name: మంచి విషయం
+    good_topic:
+      name: చాలా మంచి విషయం
+    great_topic:
+      name: బహుమంచి విషయం
+    nice_share:
+      name: మంచి పంపకం
+      description: ఒక టపాను 25మంది సభ్యులతో పంచుకున్నారు
+    good_share:
+      name: చాలామంచి పంపకం
+      description: ఒక టపాను 300మంది సభ్యులతో పంచుకున్నారు
+    great_share:
+      name: బహుమంచి పంపకం
+      description: ఒక టపాను 1000 మంది సభ్యులతో పంచుకున్నారు
+    first_like:
+      name: తొలి ఇష్టం
+      description: టపాను ఇష్టపడ్డారు
+    first_flag:
+      name: తొలి కేతనం
+      description: ఒక టపాను కేతనించారు
+    first_share:
+      name: తొలి పంపకం
+      description: ఒక టపాను పంచారు
+    first_link:
+      name: తొలి లంకె
+    first_quote:
+      name: తొలి కోట్
+    read_guidelines:
+      name: మార్గదర్శకాలు చదువు
+    reader:
+      name: చదువరి
+  tags:
+    title: "ట్యాగులు"
+  wizard:
+    step:
+      forum_title:
+        title: "పేరు"
+      privacy:
+        fields:
+          privacy:
+            choices:
+              open:
+                label: "బహిరంగం"
+              restricted:
+                label: "అంతరంగికం"
+      contact:
+        fields:
+          contact_email:
+            placeholder: "name@example.com"
+      corporate:
+        title: "సంస్థ"
+      colors:
+        title: "అలంకారం"
+      homepage:
+        fields:
+          homepage_style:
+            choices:
+              categories_only:
+                label: "వర్గాలు మాత్రమే"
+      emoji:
+        title: "ఇమోజి"
+  joined: "చేరినారు"
+  reviewables:
+    actions:
+      agree_and_suspend:
+        title: "సభ్యుడిని సస్పెండు చేయి"
+      delete_spammer:
+        title: "స్పామరును తొలగించు"
+      delete_single:
+        title: "తొలగించు"
+      disagree:
+        title: "ఒప్పుకోకు"
+      approve:
+        title: "అంగీకరించు"
+      reject_user:
+        delete:
+          title: "సభ్యుడిని తొలగించు"
+      reject:
+        title: "తిరస్కరించు"
+      delete_user:
+        title: "సభ్యుడిని తొలగించు"

@@ -1,49 +1,135 @@
+# frozen_string_literal: true
+
+require "final_destination"
+require "mini_mime"
 require "open-uri"
 
 class FileHelper
 
-  def self.is_image?(filename)
-    filename =~ images_regexp
+  def self.log(log_level, message)
+    Rails.logger.public_send(
+      log_level,
+      "#{RailsMultisite::ConnectionManagement.current_db}: #{message}"
+    )
   end
 
-  def self.download(url, max_file_size, tmp_file_name, follow_redirect=false, read_timeout=5)
+  def self.is_supported_image?(filename)
+    filename =~ supported_images_regexp
+  end
+
+  class FakeIO
+    attr_accessor :status
+  end
+
+  def self.download(url,
+                    max_file_size:,
+                    tmp_file_name:,
+                    follow_redirect: false,
+                    read_timeout: 5,
+                    skip_rate_limit: false,
+                    verbose: false,
+                    validate_uri: true,
+                    retain_on_max_file_size_exceeded: false)
+
+    url = "https:" + url if url.start_with?("//")
     raise Discourse::InvalidParameters.new(:url) unless url =~ /^https?:\/\//
 
-    uri = parse_url(url)
-    extension = File.extname(uri.path)
-    tmp = Tempfile.new([tmp_file_name, extension])
+    tmp = nil
 
-    File.open(tmp.path, "wb") do |f|
-      downloaded = uri.open("rb", read_timeout: read_timeout, redirect: follow_redirect, allow_redirections: :all)
-      while f.size <= max_file_size && data = downloaded.read(512.kilobytes)
-        f.write(data)
+    fd = FinalDestination.new(
+      url,
+      max_redirects: follow_redirect ? 5 : 0,
+      skip_rate_limit: skip_rate_limit,
+      verbose: verbose,
+      validate_uri: validate_uri
+    )
+
+    fd.get do |response, chunk, uri|
+      if tmp.nil?
+        # error handling
+        if uri.blank?
+          if response.code.to_i >= 400
+            # attempt error API compatibility
+            io = FakeIO.new
+            io.status = [response.code, ""]
+            raise OpenURI::HTTPError.new("#{response.code} Error: #{response.body}", io)
+          else
+            log(:error, "FinalDestination did not work for: #{url}") if verbose
+            throw :done
+          end
+        end
+
+        if response.content_type.present?
+          ext = MiniMime.lookup_by_content_type(response.content_type)&.extension
+          ext = "jpg" if ext == "jpe"
+          tmp_file_ext = "." + ext if ext.present?
+        end
+
+        tmp_file_ext ||= File.extname(uri.path)
+        tmp = Tempfile.new([tmp_file_name, tmp_file_ext])
+        tmp.binmode
       end
-      # tiny files are StringIO, no close! on them
-      downloaded.try(:close!) rescue nil
+
+      tmp.write(chunk)
+
+      if tmp.size > max_file_size
+        unless retain_on_max_file_size_exceeded
+          tmp.close
+          tmp = nil
+        end
+
+        throw :done
+      end
     end
 
+    tmp&.rewind
     tmp
   end
 
-  private
-
-  def self.images
-    @@images ||= Set.new %w{jpg jpeg png gif tif tiff bmp svg webp ico}
+  def self.optimize_image!(filename, allow_pngquant: false)
+    image_optim(
+      allow_pngquant: allow_pngquant,
+      strip_image_metadata: SiteSetting.strip_image_metadata
+    ).optimize_image!(filename)
   end
 
-  def self.images_regexp
-    @@images_regexp ||= /\.(#{images.to_a.join("|")})$/i
+  def self.image_optim(allow_pngquant: false, strip_image_metadata: true)
+    # memoization is critical, initializing an ImageOptim object is very expensive
+    # sometimes up to 200ms searching for binaries and looking at versions
+    memoize("image_optim", allow_pngquant, strip_image_metadata) do
+      pngquant_options = false
+      if allow_pngquant
+        pngquant_options = { allow_lossy: true }
+      end
+
+      ImageOptim.new(
+        # GLOBAL
+        timeout: 15,
+        skip_missing_workers: true,
+        # PNG
+        optipng: { level: 2, strip: strip_image_metadata },
+        advpng: false,
+        pngcrush: false,
+        pngout: false,
+        pngquant: pngquant_options,
+        # JPG
+        jpegoptim: { strip: strip_image_metadata ? "all" : "none" },
+        jpegtran: false,
+        jpegrecompress: false,
+      )
+    end
   end
 
-  # HACK to support underscores in URLs
-  # cf. http://stackoverflow.com/a/18938253/11983
-  def self.parse_url(url)
-    URI.parse(url)
-  rescue URI::InvalidURIError
-    host = url.match(".+\:\/\/([^\/]+)")[1]
-    uri = URI.parse(url.sub(host, 'valid-host'))
-    uri.instance_variable_set("@host", host)
-    uri
+  def self.memoize(*args)
+    (@memoized ||= {})[args] ||= yield
+  end
+
+  def self.supported_images
+    @@supported_images ||= Set.new %w{jpg jpeg png gif svg ico}
+  end
+
+  def self.supported_images_regexp
+    @@supported_images_regexp ||= /\.(#{supported_images.to_a.join("|")})$/i
   end
 
 end

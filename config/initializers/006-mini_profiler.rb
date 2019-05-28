@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # If Mini Profiler is included via gem
 if Rails.configuration.respond_to?(:load_mini_profiler) && Rails.configuration.load_mini_profiler
   require 'rack-mini-profiler'
@@ -6,29 +8,32 @@ if Rails.configuration.respond_to?(:load_mini_profiler) && Rails.configuration.l
   begin
     require 'memory_profiler'
   rescue => e
-     STDERR.put "#{e} failed to require mini profiler"
+    STDERR.put "#{e} failed to require mini profiler"
   end
 
   # initialization is skipped so trigger it
   Rack::MiniProfilerRails.initialize!(Rails.application)
 end
 
-if defined?(Rack::MiniProfiler)
-
+if defined?(Rack::MiniProfiler) && defined?(Rack::MiniProfiler::Config)
   # note, we may want to add some extra security here that disables mini profiler in a multi hosted env unless user global admin
   #   raw_connection means results are not namespaced
   #
   # namespacing gets complex, cause mini profiler is in the rack chain way before multisite
-  Rack::MiniProfiler.config.storage_instance = Rack::MiniProfiler::RedisStore.new(connection:  DiscourseRedis.raw_connection)
+  Rack::MiniProfiler.config.storage_instance = Rack::MiniProfiler::RedisStore.new(
+    connection:  DiscourseRedis.new(nil, namespace: false)
+  )
 
   skip = [
     /^\/message-bus/,
+    /^\/extra-locales/,
     /topics\/timings/,
     /assets/,
     /\/user_avatar\//,
     /\/letter_avatar\//,
     /\/letter_avatar_proxy\//,
     /\/highlight-js\//,
+    /\/svg-sprite\//,
     /qunit/,
     /srv\/status/,
     /commits-widget/,
@@ -48,7 +53,7 @@ if defined?(Rack::MiniProfiler)
     path = env['PATH_INFO']
 
     (env['HTTP_USER_AGENT'] !~ /iPad|iPhone|Android/) &&
-    !skip.any?{|re| re =~ path}
+    !skip.any? { |re| re =~ path }
   end
 
   # without a user provider our results will use the ip address for namespacing
@@ -67,7 +72,6 @@ if defined?(Rack::MiniProfiler)
   Rack::MiniProfiler.config.backtrace_ignores << /lib\/rack\/message_bus.rb/
   Rack::MiniProfiler.config.backtrace_ignores << /config\/initializers\/silence_logger/
   Rack::MiniProfiler.config.backtrace_ignores << /config\/initializers\/quiet_logger/
-
 
   # Rack::MiniProfiler.counter_method(ActiveRecord::QueryMethods, 'build_arel')
   # Rack::MiniProfiler.counter_method(Array, 'uniq')
@@ -97,9 +101,8 @@ if defined?(Rack::MiniProfiler)
   # Rack::MiniProfiler.profile_method ActionView::PathResolver, 'find_templates'
 end
 
-
 if ENV["PRINT_EXCEPTIONS"]
-  trace      = TracePoint.new(:raise) do |tp|
+  trace = TracePoint.new(:raise) do |tp|
     puts tp.raised_exception
     puts tp.raised_exception.backtrace.join("\n")
     puts

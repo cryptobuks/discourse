@@ -16,22 +16,27 @@ nl:
         other: "totale stemmen"
       average_rating: "Gemiddelde beoordeling: <strong>%{average}</strong>."
       public:
-        title: "Stemmen zijn openbaar."
+        title: "Stemmen zijn <strong>openbaar</strong>."
+      results:
+        vote:
+          title: "Resultaten worden getoond bij <strong>stemmen</strong>."
+        closed:
+          title: "Resultaten worden getoond zodra <strong>gesloten</strong>."
       multiple:
         help:
           at_least_min_options:
-            one: "Kies minstens <strong>1</strong> optie"
+            one: "Kies minstens <strong>%{count}</strong> optie"
             other: "Kies minstens <strong>%{count}</strong> opties"
           up_to_max_options:
-            one: "Kies maximaal <strong>1</string> optie"
+            one: "Kies maximaal <strong>%{count}</string> optie"
             other: "Kies maximaal <strong>%{count}</string> opties"
           x_options:
-            one: "Kies <strong>1</strong> optie"
+            one: "Kies <strong>%{count}</strong> optie"
             other: "Kies <strong>%{count}</strong> opties"
           between_min_and_max_options: "Kies <strong>%{min}</strong> tot <strong>%{max}</strong> opties"
       cast-votes:
-        title: "Breng je stemmen uit"
-        label: "Stem nu!"
+        title: "Uw stemmen uitbrengen"
+        label: "Nu stemmen!"
       show-results:
         title: "De pollresultaten weergeven"
         label: "Resultaten tonen"
@@ -46,19 +51,29 @@ nl:
         title: "De poll sluiten"
         label: "Sluiten"
         confirm: "Weet u zeker dat u deze poll wilt sluiten?"
+      automatic_close:
+        closes_in: "Sluit over <strong>%{timeLeft}</strong>."
+        age: "Gesloten: <strong>%{age}</strong>"
       error_while_toggling_status: "Sorry, er is een fout opgetreden bij het omschakelen van de status van deze poll."
-      error_while_casting_votes: "Sorry, er is een fout opgetreden bij uitbrengen van uw stemmen."
+      error_while_casting_votes: "Sorry, er is een fout opgetreden bij het uitbrengen van uw stemmen."
       error_while_fetching_voters: "Sorry, er is een fout opgetreden bij het weergeven van de stemmers."
       ui_builder:
         title: Poll aanmaken
         insert: Poll invoegen
         help:
-          options_count: Voer minstens 2 opties in
+          options_count: Geef ten minste 2 opties
+          invalid_values: Minimale waarde moet kleiner zijn dan de maximale waarde.
+          min_step_value: De minimale waarde voor stap is 1
         poll_type:
           label: Type
           regular: Eén keuze
           multiple: Meerkeuze
           number: Numerieke beoordeling
+        poll_result:
+          label: Resultaten
+          always: Altijd zichtbaar
+          vote: Bij stemmen
+          closed: Wanneer gesloten
         poll_config:
           max: Max
           min: Min
@@ -66,4 +81,6 @@ nl:
         poll_public:
           label: Tonen wie er heeft gestemd
         poll_options:
-          label: Voer één polloptie per regel in
+          label: Geef één polloptie per regel op
+        automatic_close:
+          label: Poll automatisch sluiten

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module FileStore
 
   class BaseStore
@@ -26,6 +28,10 @@ module FileStore
 
     def remove_file(url, path)
       not_implemented
+    end
+
+    def upload_path
+      File.join("uploads", RailsMultisite::ConnectionManagement.current_db)
     end
 
     def has_been_uploaded?(url)
@@ -60,6 +66,10 @@ module FileStore
       not_implemented
     end
 
+    def list_missing_uploads(skip_optimized: false)
+      not_implemented
+    end
+
     def download(upload)
       DistributedMutex.synchronize("download_#{upload.sha1}") do
         filename = "#{upload.sha1}#{File.extname(upload.original_filename)}"
@@ -68,8 +78,14 @@ module FileStore
         if !file
           max_file_size_kb = [SiteSetting.max_image_size_kb, SiteSetting.max_attachment_size_kb].max.kilobytes
           url = SiteSetting.scheme + ":" + upload.url
-          file = FileHelper.download(url, max_file_size_kb, "discourse-download", true)
+          file = FileHelper.download(
+            url,
+            max_file_size: max_file_size_kb,
+            tmp_file_name: "discourse-download",
+            follow_redirect: true
+          )
           cache_file(file, filename)
+          file = get_from_cache(filename)
         end
 
         file
@@ -79,23 +95,28 @@ module FileStore
     def purge_tombstone(grace_period)
     end
 
-    def get_depth_for(id)
-      [0, Math.log(id / 1_000.0, 16).ceil].max
-    end
-
     def get_path_for(type, id, sha, extension)
       depth = get_depth_for(id)
-      tree = File.join(*sha[0, depth].split(""), "")
+      tree = File.join(*sha[0, depth].chars, "")
       "#{type}/#{depth + 1}X/#{tree}#{sha}#{extension}"
     end
 
     def get_path_for_upload(upload)
-      get_path_for("original".freeze, upload.id, upload.sha1, upload.extension)
+      extension =
+        if upload.extension
+          ".#{upload.extension}"
+        else
+          # Maintain backward compatibility before Jobs::MigrateUploadExtensions runs
+          File.extname(upload.original_filename)
+        end
+
+      get_path_for("original".freeze, upload.id, upload.sha1, extension)
     end
 
     def get_path_for_optimized_image(optimized_image)
       upload = optimized_image.upload
-      extension = "_#{OptimizedImage::VERSION}_#{optimized_image.width}x#{optimized_image.height}#{optimized_image.extension}"
+      version = optimized_image.version || 1
+      extension = "_#{version}_#{optimized_image.width}x#{optimized_image.height}#{optimized_image.extension}"
       get_path_for("optimized".freeze, upload.id, upload.sha1, extension)
     end
 
@@ -114,16 +135,22 @@ module FileStore
     def cache_file(file, filename)
       path = get_cache_path_for(filename)
       dir = File.dirname(path)
-      FileUtils.mkdir_p(dir) unless Dir[dir].present?
+      FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
       FileUtils.cp(file.path, path)
       # keep latest 500 files
-      `ls -tr #{CACHE_DIR} | head -n +#{CACHE_MAXIMUM_SIZE} | xargs rm -f`
+      `ls -tr #{CACHE_DIR} | head -n -#{CACHE_MAXIMUM_SIZE} | awk '$0="#{CACHE_DIR}"$0' | xargs rm -f`
     end
 
     private
 
     def not_implemented
       raise "Not implemented."
+    end
+
+    def get_depth_for(id)
+      depths = [0]
+      depths << Math.log(id / 1_000.0, 16).ceil if id.positive?
+      depths.max
     end
 
   end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Generates posts and topics
 class Populate < Thor
   desc "posts", "Generate posts"
@@ -60,7 +62,8 @@ class Populate < Thor
   private
 
   def create_user(user_email)
-    unless User.find_by_email(user_email)
+    user = User.find_by_email(user_email)
+    unless user
       puts "Creating new account: #{user_email}"
       user = User.create!(email: user_email, password: SecureRandom.hex, username: UserNameSuggester.suggest(user_email))
     end

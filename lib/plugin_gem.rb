@@ -1,12 +1,14 @@
+# frozen_string_literal: true
+
 module PluginGem
-  def self.load(path, name, version, opts=nil)
+  def self.load(path, name, version, opts = nil)
     opts ||= {}
 
     gems_path = File.dirname(path) + "/gems/#{RUBY_VERSION}"
     spec_path = gems_path + "/specifications"
     spec_file = spec_path + "/#{name}-#{version}.gemspec"
     unless File.exists? spec_file
-      command = "gem install #{name} -v #{version} -i #{gems_path} --no-document --ignore-dependencies"
+      command = "gem install #{name} -v #{version} -i #{gems_path} --no-document --ignore-dependencies --no-user-install"
       if opts[:source]
         command << " --source #{opts[:source]}"
       end
@@ -21,6 +23,7 @@ module PluginGem
       end
     else
       puts "You are specifying the gem #{name} in #{path}, however it does not exist!"
+      puts "Looked for: #{spec_file}"
       exit(-1)
     end
   end

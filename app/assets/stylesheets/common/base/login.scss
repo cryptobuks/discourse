@@ -1,6 +1,6 @@
 .caps-lock-warning {
   color: $danger;
-  font-size: 0.857em;
+  font-size: $font-down-1;
   font-weight: bold;
 }
 
@@ -12,62 +12,99 @@
   display: none;
 }
 
+#login-form {
+  table {
+    width: 100%;
+  }
+  a {
+    color: $primary-high;
+  }
+  td {
+    padding-right: 5px;
+  }
+  #credentials {
+    tr:first-of-type {
+      margin-bottom: 0.75em;
+    }
+  }
+}
 
-$label-width: 92px;
-$input-width: 220px;
+#new-account-link {
+  cursor: pointer;
+}
+
+.login-modal,
+.create-account {
+  tr {
+    border: none;
+  }
+  tr:not(.instructions) {
+    td {
+      padding: 10px 0 0 0;
+    }
+  }
+  td {
+    label,
+    input {
+      margin-bottom: 0;
+      width: 100%;
+    }
+  }
+  .modal-footer {
+    .inline-spinner {
+      display: inline-flex;
+    }
+  }
+  &.awaiting-approval {
+    display: none;
+  }
+}
 
 .create-account {
-  table {
-    td.label {
-      width: $label-width;
-    }
-
-    td input {
-      width: $input-width;
-    }
-  }
-
   .disclaimer {
-    font-size: 0.9em;
-    color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%));
-    clear: both;
-  }
-
-  .user-field.confirm {
-    margin-top: 20px;
+    color: $primary-medium;
+    margin-top: 0.5em;
   }
 
   .user-field {
-    label {
-      width: $label-width;
-      float: left;
-    }
-    input[type=text] {
-      width: $input-width;
+    > label {
+      margin-top: 0.75em;
       margin-bottom: 0;
+      padding-top: 5px;
     }
+    &:first-of-type > label {
+      margin-top: 0;
+    }
+
+    input[type="text"] {
+      margin-bottom: 0;
+      width: 100%;
+    }
+
+    .select-kit {
+      width: 100%;
+    }
+
     .controls {
-      margin-left: $label-width;
-      margin-bottom: 15px;
+      padding-top: 5px;
       label {
         width: auto;
         text-align: left;
         font-weight: normal;
-        float: auto;
       }
-      p {
-        color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%));
-        margin: 0;
+      .instructions {
+        margin-top: 0.15em;
+        color: $primary-medium;
+        line-height: $line-height-medium;
       }
     }
-    clear: both;
   }
 }
 
 .password-reset {
   .instructions {
     label {
-      color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%));
+      color: $primary-medium;
     }
   }
 }
@@ -75,12 +112,15 @@ $input-width: 220px;
 .invites-show {
   .two-col {
     position: relative;
+    display: flex;
   }
 
   .col-image {
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: relative;
+    margin-right: 20px;
+    @media screen and (max-width: 600px) {
+      display: none;
+    }
   }
 
   form {
@@ -88,19 +128,43 @@ $input-width: 220px;
     button.btn-primary {
       margin-top: 10px;
     }
-    label {
+    label:not(.checkbox-label) {
       font-weight: bold;
+    }
+    .controls,
+    .input {
+      margin-bottom: 10px;
+    }
+    .instructions {
+      color: $primary-medium;
+      margin: 0;
+      font-size: $font-down-1;
+      font-weight: normal;
+      line-height: $line-height-medium;
     }
   }
 }
 
+.auth-message {
+  padding: 0 15px 15px 15px;
+  &:empty {
+    padding: 0;
+  }
+}
+
+.modal tr.instructions {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.15em;
+  label {
+    color: $primary-medium;
+  }
+}
 
 // alternate login / create new account buttons should be de-emphasized
 
-button#login-link, button#new-account-link
-{
+button#login-link,
+button#new-account-link {
   background: transparent;
-  padding-left: 0;
-  margin-left: 20px;
-  color: dark-light-choose(scale-color($primary, $lightness: 35%), scale-color($secondary, $lightness: 65%));
+  color: $primary-high;
 }

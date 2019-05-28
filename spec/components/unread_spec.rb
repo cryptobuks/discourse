@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'unread'
 
@@ -35,7 +37,6 @@ describe Unread do
       expect(unread.new_posts).to eq(2)
     end
   end
-
 
   describe 'unread_posts' do
     it 'should have 0 unread posts if the user has seen all posts' do

@@ -1,6 +1,8 @@
 // base styles for every modal popup used in Discourse
 
-.modal-open #main {overflow:hidden;}
+.modal-open #main {
+  overflow: hidden;
+}
 
 .modal-middle-container {
   margin-top: 10%;
@@ -10,63 +12,36 @@
 
 // Hardcode to be the same as before for now. I would recommend not using bootbox, or finding a way so the html structure can be the same
 .bootbox.modal {
-  position: fixed;
   top: 10%;
-  z-index: 1050;
-  overflow: auto;
   width: 100%;
-  height: auto;
-  background-color: $secondary;
-  border: 1px solid rgba(0, 0, 0, 0.3);
-
-  @include border-radius-all (6px);
-  box-shadow: 0 3px 7px rgba(0,0,0, 0.3);
-  background-clip: padding-box;
 }
 
 .modal.fade {
-  transition: opacity .3s linear, top .3s ease-out;
+  transition: opacity 0.3s linear, top 0.3s ease-out;
   top: -25%;
 }
 .modal.fade.in {
   top: 50%;
 }
 .modal-body {
-  overflow-y: auto;
-  max-height: 400px;
-  padding: 10px 0 10px 10px;
-  width: 95%;
+  padding: 10px;
 }
 
-// we need a little extra room on mobile for the 
+// we need a little extra room on mobile for the
 // stuff inside the footer to fit
 .modal-footer {
-  padding-right: 0;
-}
-
-.modal-footer .btn + .btn {
-  margin-right: 5px;
-  margin-bottom: 5px;
+  padding: 10px;
 }
 
 .modal-header {
-  // we need tighter spacing on mobile for header
-  // this clearfix under the modal title h3 pushes it way down
-  .clearfix {
-    display:none;
-  }
+  padding: 10px;
   h3 {
-    font-size: 1.286em;
-    padding-left: 15px;
-    margin-bottom: 5px;
+    font-size: $font-up-2;
   }
 }
+
 .close {
-  float: right;
-  font-size: 1.714em;
-  padding: 10px 15px 5px 5px;
-  margin: -15px 0 0 0;
-  color: $primary;
+  font-size: $font-up-4;
 }
 
 #move-selected {
@@ -74,8 +49,12 @@
     margin-top: 0;
   }
 
-  input[type=radio] {
+  input[type="radio"] {
     margin-right: 10px;
+  }
+
+  .category-chooser {
+    margin-bottom: 9px;
   }
 
   button {
@@ -86,30 +65,17 @@
 
   form {
     margin-top: 20px;
-    input[type=text] {
+    input:not(.filter-input)[type="text"] {
       box-sizing: border-box;
       width: 100%;
     }
   }
+}
 
-  .category-combobox {
-    width: 100%;
+@media only screen and (max-device-width: 568px) {
+  .modal .flag-modal .flag-message {
+    height: 3em;
   }
-}
-
-.flag-modal {
-  max-height: 450px;
-}
-
-.custom-message-length {
-  margin: -10px 0 10px 20px;
-  color: dark-light-choose(scale-color($primary, $lightness: 30%), scale-color($secondary, $lightness: 70%));
-  font-size: 85%;
-}
-
-.flag-message {
-  margin-left: 20px;
-  width: 95% !important;
 }
 
 .edit-category-modal {
@@ -120,31 +86,12 @@
   &.small .modal-body {
     height: 310px;
   }
-  .secure-category-options {
-    margin: 10px 0 0 16px;
-    .badge-list {
-      margin: 10px 0;
-      li {
-        margin: 0 4px 8px 0;
-        a {
-          color: #888;
-          cursor: pointer;
-        }
-      }
-    }
+
+  .disable_info_wrap .cannot_delete_reason {
+    top: -114px;
+    right: 8px;
+    min-width: 200px;
   }
-}
-
-.tabbed-modal {
-  .modal-body {
-    position: relative;
-    height: 350px;
-  }
-}
-
-
-.modal-tab {
-  position: absolute;
 }
 
 /* fixes for the new account confirm dialog on mobile */
@@ -153,45 +100,7 @@
   margin-bottom: 20px;
 }
 
-.alert {
-  padding: 5px;
-  &.alert-success {
-    background-color:  scale-color($success, $lightness: 90%);
-    color: $success;
-  }
-}
-
-.delete-flag-modal, .agree-flag-modal {
-  .modal-inner-container {
-    width: 300px;
-  }
-  .btn {
-    float: none !important;
-  }
-}
-
-#search-help {
-  max-width: 98%;
-}
-
-// this makes the table behave like a flat list
-#search-help td {
-  display: block;
-  padding-left: 10px;
-}
-
-#search-help h3 {
-  display: none;
-}
-
-#search-help p {
-  margin: 10px;
-}
-
-#search-help .btn-primary {
-  float: none;
-}
-
-#google-search form {
-  padding-left: 10px;
+.change-timestamp-footer .btn-primary {
+  float: right;
+  margin-right: 5px;
 }

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class UserFieldOption < ActiveRecord::Base
 end
 
@@ -8,6 +10,6 @@ end
 #  id            :integer          not null, primary key
 #  user_field_id :integer          not null
 #  value         :string           not null
-#  created_at    :datetime
-#  updated_at    :datetime
+#  created_at    :datetime         not null
+#  updated_at    :datetime         not null
 #

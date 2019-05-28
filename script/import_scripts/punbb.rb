@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "mysql2"
 
 require File.expand_path(File.dirname(__FILE__) + "/base.rb")
@@ -43,7 +45,7 @@ class ImportScripts::PunBB < ImportScripts::Base
 
       break if results.size < 1
 
-      next if all_records_exist? :users, results.map {|u| u["id"].to_i}
+      next if all_records_exist? :users, results.map { |u| u["id"].to_i }
 
       create_users(results, total: total_count, offset: offset) do |user|
         { id: user['id'],
@@ -120,7 +122,7 @@ class ImportScripts::PunBB < ImportScripts::Base
       ").to_a
 
       break if results.size < 1
-      next if all_records_exist? :posts, results.map {|m| m['id'].to_i}
+      next if all_records_exist? :posts, results.map { |m| m['id'].to_i }
 
       create_posts(results, total: total_count, offset: offset) do |m|
         skip = false

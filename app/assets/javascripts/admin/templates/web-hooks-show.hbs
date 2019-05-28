@@ -1,5 +1,5 @@
 {{#link-to 'adminWebHooks' class="go-back"}}
-  {{fa-icon 'arrow-left'}}
+  {{d-icon 'arrow-left'}}
   {{i18n 'admin.web_hooks.go_back'}}
 {{/link-to}}
 
@@ -16,8 +16,6 @@
       <label for='content-type'>{{i18n 'admin.web_hooks.content_type'}}</label>
       {{combo-box content=contentTypes
                   name="content-type"
-                  nameProperty="name"
-                  valueAttribute="id"
                   value=model.content_type}}
     </div>
 
@@ -48,17 +46,26 @@
     </div>
 
     <div class='filters'>
-      <div>
-        <label>{{fa-icon 'circle' class='tracking'}}{{i18n 'admin.web_hooks.categories_filter'}}</label>
-        {{category-selector categories=model.categories blacklist=model.categories}}
+      <div class="filter">
+        <label>{{d-icon 'circle' class='tracking'}}{{i18n 'admin.web_hooks.categories_filter'}}</label>
+        {{category-selector categories=model.categories}}
         <div class="instructions">{{i18n 'admin.web_hooks.categories_filter_instructions'}}</div>
       </div>
-      <div>
-        <label>{{fa-icon 'circle' class='tracking'}}{{i18n 'admin.web_hooks.groups_filter'}}</label>
+      {{#if showTagsFilter}}
+        <div class="filter">
+          <label>{{d-icon 'circle' class='tracking'}}{{i18n 'admin.web_hooks.tags_filter'}}</label>
+          {{tag-chooser tags=model.tag_names everyTag=true}}
+          <div class="instructions">{{i18n 'admin.web_hooks.tags_filter_instructions'}}</div>
+        </div>
+      {{/if}}
+      <div class="filter">
+        <label>{{d-icon 'circle' class='tracking'}}{{i18n 'admin.web_hooks.groups_filter'}}</label>
         {{group-selector groupNames=model.groupsFilterInName groupFinder=model.groupFinder}}
         <div class="instructions">{{i18n 'admin.web_hooks.groups_filter_instructions'}}</div>
       </div>
     </div>
+
+    {{plugin-outlet name="web-hook-fields" args=(hash model=model)}}
 
     <div>
       {{input type="checkbox" name="verify_certificate" checked=model.verify_certificate}} {{i18n 'admin.web_hooks.verify_certificate'}}
@@ -74,9 +81,10 @@
   </form>
 
   <div class='controls'>
-    <button class='btn btn-default' {{action 'save'}} disabled={{saveButtonDisabled}}>{{saveButtonText}}</button>
+    {{d-button class="btn-default" translatedLabel=saveButtonText action=(action "save") disabled=saveButtonDisabled}}
+
     {{#unless model.isNew}}
-      {{d-button class="btn-danger" label="admin.web_hooks.destroy" action="destroy"}}
+      {{d-button class="btn-danger" label="admin.web_hooks.destroy" action=(action "destroy")}}
       {{#link-to 'adminWebHooks.showEvents' model.id class="btn"}}
         {{i18n 'admin.web_hooks.events.go_events'}}
       {{/link-to}}

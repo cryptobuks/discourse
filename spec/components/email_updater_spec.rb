@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require_dependency 'email_updater'
 
@@ -131,5 +133,25 @@ describe EmailUpdater do
       end
     end
   end
-end
 
+  context 'hide_email_address_taken is enabled' do
+    before do
+      SiteSetting.hide_email_address_taken = true
+    end
+
+    let(:user) { Fabricate(:user, email: old_email) }
+    let(:existing) { Fabricate(:user, email: new_email) }
+    let(:updater) { EmailUpdater.new(user.guardian, user) }
+
+    it "doesn't error if user exists with new email" do
+      updater.change_to(existing.email)
+      expect(updater.errors).to be_blank
+      expect(user.email_change_requests).to be_empty
+    end
+
+    it 'sends an email to the owner of the account with the new email' do
+      Jobs.expects(:enqueue).once.with(:critical_user_email, has_entries(type: :account_exists, user_id: existing.id))
+      updater.change_to(existing.email)
+    end
+  end
+end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # This is used on a topic page
 class TopicParticipantsSummary
   attr_reader :topic, :options
@@ -24,7 +26,7 @@ class TopicParticipantsSummary
   end
 
   def top_participants
-    user_ids.map { |id| avatar_lookup[id] }.compact.uniq.take(3)
+    user_ids.map { |id| avatar_lookup[id] }.compact.uniq.take(4)
   end
 
   def user_ids

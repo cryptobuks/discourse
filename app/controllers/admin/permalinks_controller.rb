@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 class Admin::PermalinksController < Admin::AdminController
 
-  before_filter :fetch_permalink, only: [:destroy]
+  before_action :fetch_permalink, only: [:destroy]
 
   def index
     url = params[:filter]

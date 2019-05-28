@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # The most basic attributes of a topic that we need to create a link for it.
 class BasicPostSerializer < ApplicationSerializer
   attributes :id,
@@ -31,7 +33,7 @@ class BasicPostSerializer < ApplicationSerializer
   def cooked
     if cooked_hidden
       if scope.current_user && object.user_id == scope.current_user.id
-        I18n.t('flagging.you_must_edit')
+        I18n.t('flagging.you_must_edit', path: "/my/messages")
       else
         I18n.t('flagging.user_must_edit')
       end

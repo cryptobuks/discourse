@@ -1,23 +1,26 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'system_message'
 require 'topic_subtype'
 
 describe SystemMessage do
 
-
   context 'send' do
 
-    it 'should create a post correctly' do
+    fab!(:admin) { Fabricate(:admin) }
+    fab!(:user) { Fabricate(:user) }
 
-      admin = Fabricate(:admin)
-      user = Fabricate(:user)
+    before do
       SiteSetting.site_contact_username = admin.username
+    end
+
+    it 'should create a post correctly' do
       system_message = SystemMessage.new(user)
       post = system_message.create(:welcome_invite)
       topic = post.topic
 
-      expect(post).to be_present
-      expect(post).to be_valid
+      expect(post.valid?).to eq(true)
       expect(topic).to be_private_message
       expect(topic).to be_valid
       expect(topic.subtype).to eq(TopicSubtype.system_message)
@@ -26,7 +29,18 @@ describe SystemMessage do
 
       expect(UserArchivedMessage.where(user_id: admin.id, topic_id: topic.id).length).to eq(1)
     end
-  end
 
+    it 'should allow site_contact_group_name' do
+      group = Fabricate(:group)
+      SiteSetting.site_contact_group_name = group.name
+
+      post = SystemMessage.create(user, :welcome_invite)
+      expect(post.topic.allowed_groups).to contain_exactly(group)
+
+      group.update!(name: "anewname")
+      post = SystemMessage.create(user, :welcome_invite)
+      expect(post.topic.allowed_groups).to contain_exactly()
+    end
+  end
 
 end

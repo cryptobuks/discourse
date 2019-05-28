@@ -10,8 +10,9 @@
       <%-if (i+1) < @breadcrumbs.length%>
         itemref="breadcrumb-<%=(i+1)%>"
       <%-end%>>
-      <a href="<%=c[:url]%>" itemprop="url">
-        <span itemprop="title"><%=c[:name]%></span>
+      <a href="<%=c[:url]%>" itemprop="url" class='badge-wrapper bullet'>
+        <span class="badge-category-bg"></span>
+        <span itemprop="title" class='category-title'><%=c[:name]%></span>
       </a>
     </div>
   <% end %>
@@ -37,20 +38,31 @@
 
 <%= server_plugin_outlet "topic_header" %>
 
-<hr>
-
 <%- if include_crawler_content? %>
 
 <% @topic_view.posts.each do |post| %>
-  <div itemscope itemtype='http://schema.org/DiscussionForumPosting'>
+  <div itemscope itemtype='http://schema.org/DiscussionForumPosting' class='topic-body crawler-post'>
     <% if (u = post.user) %>
       <div class='creator'>
         <span>
-          <a href='<%= Discourse.base_uri %>/users/<%= u.username %>'><b itemprop='author'><%= u.username %></b></a>
-           <%= "(#{u.name})" if (SiteSetting.display_name_on_posts && SiteSetting.enable_names? && !u.name.blank?) %>
-           <time datetime='<%= post.created_at.to_formatted_s(:iso8601) %>' itemprop='datePublished'>
-             <%= post.created_at %>
-           </time>
+          <a href='<%= Discourse.base_uri %>/u/<%= u.username %>'><b itemprop='author'><%= u.username %></b></a>
+          <%= "(#{u.name})" if (SiteSetting.display_name_on_posts && SiteSetting.enable_names? && !u.name.blank?) %>
+          <%
+            who_username = post.custom_fields["action_code_who"] || ""
+            if post.action_code
+          %>
+            <%= t("js.action_codes.#{post.action_code}", when: "", who: who_username).html_safe %>
+          <% end %>
+          <% if post.updated_at > post.created_at %>
+            <meta itemprop='datePublished' content='<%= post.created_at.to_formatted_s(:iso8601) %>'>
+            <time itemprop='dateModified' datetime='<%= post.updated_at.to_formatted_s(:iso8601) %>' class='post-time'>
+              <%= l post.updated_at, format: :long %>
+            </time>
+          <% else %>
+            <time itemprop='datePublished' datetime='<%= post.created_at.to_formatted_s(:iso8601) %>' class='post-time'>
+              <%= l post.created_at, format: :long %>
+            </time>
+          <% end %>
         </span>
         <span itemprop='position'>#<%= post.post_number %></span>
       </div>
@@ -60,7 +72,9 @@
       <meta itemprop='interactionCount' content='UserLikes:<%= post.like_count %>'>
       <meta itemprop='interactionCount' content='UserComments:<%= post.reply_count %>'>
       <meta itemprop='headline' content='<%= @topic_view.title %>'>
-      <hr>
+      <div class='clearfix'>
+        <span class='post-likes'><%= post.like_count > 0 ? t('post.has_likes', count: post.like_count) : '' %></span>
+      </div>
       <% if @topic_view.link_counts[post.id] && @topic_view.link_counts[post.id].length > 0 %>
         <% @topic_view.link_counts[post.id].each do |link| %>
           <% if link[:reflection] && link[:title].present? %>
@@ -74,12 +88,12 @@
 <% end %>
 
 <% if @topic_view.prev_page || @topic_view.next_page %>
-  <div role='navigation' itemscope itemtype='http://schema.org/SiteNavigationElement'>
+  <div role='navigation' itemscope itemtype='http://schema.org/SiteNavigationElement' class="topic-body crawler-post">
     <% if @topic_view.prev_page %>
-      <span itemprop='url'><%= link_to t(:prev_page), @topic_view.prev_page_path, rel: 'prev', itemprop: 'name' %></span>
+      <span itemprop='name'><%= link_to t(:prev_page), @topic_view.prev_page_path, rel: 'prev', itemprop: 'url' %></span>
     <% end %>
     <% if @topic_view.next_page %>
-      <span itemprop='url'><b><%= link_to t(:next_page), @topic_view.next_page_path, rel: 'next', itemprop: 'name' %></b></span>
+      <span itemprop='name'><b><%= link_to t(:next_page), @topic_view.next_page_path, rel: 'next', itemprop: 'url' %></b></span>
     <% end %>
   </div>
 <% end %>
@@ -88,7 +102,7 @@
 
 <% content_for :head do %>
   <%= auto_discovery_link_tag(@topic_view, {action: :feed, slug: @topic_view.topic.slug, topic_id: @topic_view.topic.id}, title: t('rss_posts_in_topic', topic: @topic_view.title), type: 'application/rss+xml') %>
-  <%= raw crawlable_meta_data(title: @topic_view.title, description: @topic_view.summary, image: @topic_view.image_url, read_time: @topic_view.read_time, like_count: @topic_view.like_count) %>
+  <%= raw crawlable_meta_data(title: @topic_view.title, description: @topic_view.summary(strip_images: true), image: @topic_view.image_url, read_time: @topic_view.read_time, like_count: @topic_view.like_count, ignore_canonical: true, published_time: @topic_view.published_time) %>
 
   <% if @topic_view.prev_page || @topic_view.next_page %>
     <% if @topic_view.prev_page %>
@@ -100,20 +114,10 @@
   <% end %>
 <% end %>
 
-<% content_for(:title) { "#{@topic_view.page_title}" } %>
+<% content_for(:title) { @title || "#{gsub_emoji_to_unicode(@topic_view.page_title)} - #{SiteSetting.title}" } %>
 
 <% if @topic_view.print %>
   <% content_for :after_body do %>
-      <style media="print">
-        /* For readability */
-        a, a:visited {
-          color: #0088cc !important;
-        }
-      </style>
-      <script>
-        document.addEventListener("DOMContentLoaded", function() {
-          window.print();
-        });
-      </script>
+      <%= preload_script('print-page') %>
   <% end %>
 <% end %>

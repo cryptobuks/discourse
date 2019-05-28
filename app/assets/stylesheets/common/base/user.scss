@@ -1,93 +1,403 @@
+// Common styles for "/user" section
+// These styles are also used for "/groups" — test those pages if making significant changes
 
-// styling of bottom section
-.user-stream .child-actions {
-  margin-top: 8px;
-  .avatar-link {
-    float: none;
+.user-content-wrapper {
+  // Grid layout
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 5fr;
+  grid-template-rows: auto auto 1fr auto;
+  grid-row-gap: s(5);
+  .user-primary-navigation {
+    grid-column-start: 1;
+    grid-column-end: 3;
+    grid-row-start: 1;
+    grid-row-end: 2;
   }
-  .fa {
-    width: 15px;
-    display: inline-block;
-    color: $primary;
+  .user-secondary-navigation {
+    grid-column-start: 1;
+    grid-column-end: 2;
+    grid-row-start: 2;
+    grid-row-end: 3;
   }
-  .avatar-link {
-    margin-right: 3px;
+  .solo-preference,
+  .user-content,
+  .spinner {
+    grid-row-start: 2;
+    grid-row-end: 4;
+    grid-column-start: 1;
+    grid-column-end: 3;
+  }
+  .user-content {
+    min-width: 100%;
+  }
+  .user-additional-controls + .user-content,
+  .user-secondary-navigation + .user-content {
+    grid-column-start: 2;
+    grid-column-end: 3;
+  }
+  .user-additional-controls {
+    grid-row-start: 3;
+    align-self: start;
+    justify-self: start;
+  }
+}
+
+.user-content-wrapper {
+  // IE11 Support
+  display: -ms-grid;
+  -ms-grid-columns: 1fr 5fr;
+  -ms-grid-rows: auto auto 1fr auto;
+  .user-primary-navigation {
+    -ms-grid-row: 1;
+    -ms-grid-column: 1;
+    -ms-grid-column-span: 2;
+  }
+  .user-secondary-navigation {
+    -ms-grid-row: 2;
+    -ms-grid-column: 1;
+  }
+  .solo-preference,
+  .user-content,
+  .spinner {
+    -ms-grid-row: 2;
+    -ms-grid-column: 1;
+    -ms-grid-column-span: 2;
+  }
+  .user-secondary-navigation + .user-content {
+    -ms-grid-column: 2;
+    -ms-grid-column-span: 1;
+  }
+  .user-additional-controls {
+    -ms-grid-row: 3;
+    -ms-grid-column-align: start;
+    -ms-grid-row-align: start;
+  }
+}
+
+.user-content {
+  .list-actions {
+    display: flex;
+    margin-bottom: s(3);
+
+    .btn {
+      margin-right: s(3);
+    }
+  }
+
+  .paginated-topics-list {
+    position: relative;
+  }
+
+  .show-mores {
+    width: 100%;
+  }
+
+  .d-icon-heart {
+    color: $love;
   }
 }
 
 .user-main {
-  i.fa-heart {
-    color: $love !important;
+  .about {
+    width: 100%;
+    margin-bottom: 15px;
+
+    &.has-background {
+      .user-profile-image {
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+      }
+      .staff-counters {
+        margin-bottom: 0;
+      }
+    }
+
+    .secondary {
+      display: inline-block;
+      width: 100%;
+      border-top: 1px solid $primary-low;
+
+      .btn {
+        padding: 4px 12px;
+      }
+
+      dl {
+        margin: 0;
+        padding: 5px 10px;
+        div {
+          display: inline-flex;
+          align-items: baseline;
+          margin-right: 15px;
+          margin: 4px 0;
+        }
+      }
+
+      dt,
+      dd {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      dd {
+        padding: 0;
+        margin: 0 15px 0 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: $primary;
+
+        &.groups {
+          span:not(:last-of-type) {
+            margin-right: 0.25em;
+          }
+          span:after {
+            content: ",";
+          }
+          span:last-of-type:after {
+            content: "";
+          }
+        }
+      }
+
+      dt {
+        color: $secondary-medium;
+        margin-right: 5px;
+        display: inline-block;
+      }
+    }
+
+    .details {
+      background: rgba($secondary, 0.8);
+      border-bottom: 1px solid $primary-low;
+
+      h1 {
+        font-size: $font-up-5;
+        font-weight: normal;
+        .d-icon {
+          font-size: 0.8em;
+        }
+      }
+
+      h2 {
+        font-weight: normal;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      h3 {
+        font-weight: normal;
+        margin-bottom: 0.5em;
+        .d-icon:not(:first-of-type) {
+          margin-left: 10px;
+        }
+      }
+
+      .groups {
+        margin-left: 10px;
+        display: inline;
+      }
+
+      img.avatar {
+        float: left;
+      }
+
+      .suspended {
+        color: $danger;
+      }
+
+      .primary {
+        width: 100%;
+        position: relative;
+
+        h1 {
+          font-weight: bold;
+        }
+
+        .bio {
+          max-height: 300px;
+          overflow: auto;
+
+          a[href] {
+            text-decoration: underline;
+          }
+
+          img {
+            max-width: 100%;
+          }
+        }
+      }
+
+      .user-profile-avatar {
+        position: relative;
+        float: left;
+        .avatar-flair {
+          bottom: 8px;
+          right: 16px;
+        }
+      }
+    }
+
+    .controls {
+      ul {
+        list-style-type: none;
+      }
+
+      .btn {
+        margin-bottom: 10px;
+        line-height: $line-height-medium;
+      }
+    }
+
+    &.collapsed-info {
+      .details {
+        margin-top: 0;
+        background: rgba($secondary, 0.8);
+
+        .bio {
+          display: none;
+        }
+
+        .primary {
+          width: 100%;
+
+          .avatar {
+            margin-right: 10px;
+            width: 45px;
+            height: 45px;
+          }
+
+          h1 {
+            font-size: $font-up-3;
+          }
+
+          h2 {
+            font-size: $font-up-1;
+          }
+          h3,
+          h3.location-and-website {
+            display: none;
+          }
+        }
+      }
+
+      .user-profile-avatar {
+        .avatar-flair {
+          bottom: 8px;
+          right: 2px;
+          .d-icon {
+            font-size: $font-0;
+          }
+        }
+      }
+    }
   }
-  .nav-pills {
-    a {
-      color: dark-light-choose(scale-color($primary, $lightness: 40%), scale-color($secondary, $lightness: 40%));
-    }
 
-    a:hover i {
-      color: $quaternary;
-    }
-
-    a.active i {
+  .staff-counters {
+    background: $primary;
+    color: $secondary;
+    display: flex;
+    padding: 10px;
+    margin-bottom: s(4);
+    > div,
+    > div a {
+      display: flex;
+      align-items: baseline;
+      flex: 0 1 auto;
+      margin: 0 10px 0 0;
       color: $secondary;
+
+      span {
+        padding: 0 7px 1px;
+        border-radius: 10px;
+        margin-right: 5px;
+      }
     }
 
-    i {
-      color: dark-light-choose(scale-color($primary, $lightness: 55%), scale-color($secondary, $lightness: 55%));
+    .active {
+      font-weight: bold;
+    }
+  }
+
+  .helpful-flags {
+    background-color: $success;
+  }
+
+  .flagged-posts {
+    background-color: #e49735;
+  }
+
+  .warnings-received {
+    background-color: $danger-medium;
+  }
+
+  .deleted-posts {
+    background-color: $danger-medium;
+  }
+
+  .suspensions {
+    background-color: $danger;
+  }
+
+  .user-field {
+    margin-bottom: 10px;
+
+    .controls {
+      label {
+        width: auto;
+        text-align: left;
+        font-weight: normal;
+      }
+
+      .instructions {
+        color: $primary-medium;
+        margin-top: 5px;
+        margin-bottom: 10px;
+        font-size: $font-down-1;
+      }
+    }
+  }
+  .user-content {
+    .admin-controls nav {
+      margin: 0;
+      .nav-pills {
+        overflow-x: auto;
+      }
     }
   }
 }
 
 .user-field {
   .required {
-    text-align: top;
+    vertical-align: top;
     color: $danger;
     font-weight: bold;
-    font-size: 1.3em;
+    margin-left: 0.25em;
   }
 }
 
 .public-user-fields {
   margin-top: 8px;
   margin-bottom: 8px;
+
   .user-field-name {
     font-weight: bold;
   }
-}
 
-.collapsed-info .public-user-fields {
-  display: none;
-}
-
-.user-navigation {
-
-  .map {
-    height: 50px;
+  .collapsed-info & {
+    display: none;
   }
-  .avatar {
-    float: left;
-    width: 45px;
-  }
-  nav.buttons {
-    width: 180px;
-    padding: 0;
-    .btn {
-      width: 100%;
-      margin-bottom: 5px;
-      box-sizing: border-box;
-    }
-  }
-  h2 {
-    a {
-      font-size: 1em;
-      color: scale-color($tertiary, $lightness: -10%);
-      cursor: pointer;
-    }
-  }
-
 }
 
 .avatar-selector {
+  label.radio {
+    padding-left: 10px;
+  }
+  .avatar-choice {
+    min-height: 40px;
+  }
   label {
     display: inline-block;
     margin-right: 10px;
@@ -100,90 +410,8 @@
   .avatar {
     margin: 5px 10px 5px 0;
   }
-}
-
-.new-private-message {
-  margin-bottom: 15px;
-}
-
-.user-info {
-  display: inline-block;
-  clear: both;
-  margin-bottom: 1em;
-
-  .user-image {
-    float: left;
-    padding-right: 4px;
-  }
-
-  .user-detail {
-    float: left;
-    width: 70%;
-    padding-left: 5px;
-    font-size: 13px;
-
-    .name-line {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .username a {
-      font-weight: bold;
-      color: dark-light-choose(scale-color($primary, $lightness: 30%), scale-color($secondary, $lightness: 70%));
-    }
-
-    .name {
-      margin-left: 5px;
-      color: dark-light-choose(scale-color($primary, $lightness: 30%), scale-color($secondary, $lightness: 70%));
-    }
-
-    .title {
-      margin-top: 3px;
-      color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%));
-    }
-  }
-}
-
-.user-info.small {
-  width: 333px;
-}
-
-.user-info.medium {
-  width: 480px;
-  min-height: 60px;
-
-  .user-image {
-    width: 55px;
-  }
-  .user-detail {
-    width: 380px;
-  }
-
-  .username, .name {
-    display: block;
-  }
-
-  .name {
-    margin-left: 0;
-  }
-}
-
-.user-nav {
-  margin: 5px 0px;
-  padding-top: 10px;
-  .fa {
-    margin-right: 5px;
-  }
-  .fa.fa-comment {
-    margin-right: 2px;
-  }
-}
-
-.user-right .list-actions {
-  margin-bottom: 10px;
-  .btn {
-    margin-right: 10px;
+  p.error {
+    color: $danger;
   }
 }
 
@@ -198,11 +426,16 @@
 .top-section,
 .top-sub-section {
   margin-bottom: 20px;
+  &.badges-section {
+    display: flex;
+    flex-wrap: wrap;
+  }
 }
 
 .stats-title {
   text-transform: uppercase;
   margin-bottom: 10px;
+  width: 100%;
 }
 
 .stats-section {
@@ -212,33 +445,29 @@
 
   li {
     display: inline-block;
-    padding: 10px 14px;
-    margin: 0 5px 10px 0;
-    background: dark-light-diff($primary, $secondary, 90%, -65%);
+    padding: 10px 14px 10px 0;
+    margin: 0 10px 10px 0;
 
-    &.linked-stat { // This makes the entire "box" (the li) clickable instead of a narrow area.
+    &.linked-stat {
+      // This makes the entire "box" (the li) clickable instead of a narrow area.
       padding: 0;
       a {
-        padding: 10px 14px;
+        padding: 10px 14px 10px 0;
         width: 100%;
         height: 100%;
         display: block;
-        color: black;
+        color: $primary;
       }
     }
   }
 
-  li:last-of-type {
-    margin: 0;
-  }
-
   .value {
     font-weight: bold;
-    font-size: 1.2em;
+    font-size: $font-up-2;
   }
 
   .label {
-    color: dark-light-diff($primary, $secondary, 50%, -50%);
+    color: $primary-medium;
   }
 }
 
@@ -250,13 +479,18 @@
   }
 
   li {
-    border-left: dark-light-diff($primary, $secondary, 90%, -65%) solid 2px;
+    border-left: $primary-low solid 2px;
     padding: 5px 8px;
     margin: 10px 0;
   }
 
   .topic-info {
-    color: dark-light-choose(scale-color($primary, $lightness: 40%), scale-color($secondary, $lightness: 40%));
+    color: $primary-medium;
+  }
+
+  @media all and (max-width: 600px) {
+    float: none;
+    width: 100%;
   }
 }
 
@@ -270,34 +504,216 @@
 
 .links-section {
   .domain {
-    font-size: 0.714em;
-    color: dark-light-choose(scale-color($primary, $lightness: 40%), scale-color($secondary, $lightness: 40%));
+    font-size: $font-down-1;
+    color: $primary-medium;
   }
 }
 
-.likes-section {
+.top-categories-section {
+  table {
+    max-width: 95%;
+    tr {
+      border: none;
+    }
+    td,
+    th {
+      padding: 0.5em;
+      &.topic-count,
+      &.reply-count {
+        text-align: center;
+      }
+    }
+  }
+}
+
+.summary-user-list {
   li {
-    height: 40px;
+    height: 45px;
   }
 }
 
-@media all
-and (max-width : 600px) {
-  .top-sub-section {
-    float: none;
+.groups {
+  .group-link {
+    color: $tertiary;
+  }
+}
+
+.user-preferences {
+  textarea {
+    height: 100px;
+  }
+
+  .tracking-controls {
+    label {
+      align-items: center;
+      .d-icon {
+        margin-right: 3px;
+      }
+    }
+  }
+
+  .static {
+    color: $primary;
+    display: inline-block;
+  }
+
+  .instructions {
+    color: $primary-medium;
+    margin-bottom: 10px;
+    font-size: $font-down-1;
+    line-height: $line-height-large;
+
+    a[href] {
+      color: $tertiary;
+    }
+  }
+
+  .avatar {
+    margin-left: 3px;
+  }
+
+  .warning {
+    background-color: $danger-medium;
+    padding: 5px 8px;
+    color: $secondary;
+    width: 520px;
+  }
+
+  .warning-wrap {
+    height: 30px;
+    margin-bottom: 10px;
+  }
+
+  .tracking-controls {
+    margin-top: 24px;
+  }
+
+  &.second-factor-backup-preferences {
+    padding-left: 0;
+
+    .second-factor-token-input {
+      margin-right: 10px;
+    }
+
+    .form-horizontal .instructions {
+      margin-left: 0;
+    }
+
+    .backup-codes {
+      margin: 2em 0;
+
+      .wrapper {
+        display: inline-block;
+        position: relative;
+        padding: 10px;
+        border-radius: 3px;
+        border: 1px solid $primary-low;
+      }
+
+      .backup-codes-area {
+        resize: none;
+        padding: 0;
+        height: auto;
+        text-align: center;
+        width: 250px;
+        background: white;
+        border: 0;
+        cursor: auto;
+        overflow: hidden;
+        outline: none;
+        font-family: monospace;
+
+        &:focus {
+          box-shadow: none;
+          border-color: #e9e9e9;
+        }
+      }
+
+      .backup-codes-copy-btn,
+      .backup-codes-download-btn {
+        right: 5px;
+        position: absolute;
+      }
+
+      .backup-codes-copy-btn {
+        top: 5px;
+      }
+
+      .backup-codes-download-btn {
+        top: 40px;
+      }
+    }
+  }
+
+  .pref-associated-accounts table {
+    td {
+      padding: 8px;
+    }
+  }
+}
+
+.paginated-topics-list {
+  .user-content {
     width: 100%;
+    margin-top: 0;
   }
 }
 
-.user-preferences .tags .select2-container-multi {
-  border: 1px solid dark-light-diff($primary, $secondary, 90%, -60%);
-  width: 540px;
-  border-radius: 0;
-  .select2-choices {
-    border: none;
+.large-notification {
+  display: flex;
+  align-items: center;
+
+  a {
+    display: flex;
+    align-items: center;
+
+    .d-icon {
+      margin-right: 0.5em;
+    }
+
+    span:first-child {
+      color: $primary;
+    }
+
+    // Can remove this once other languages have removed html from i18n values
+    div {
+      .fa {
+        display: none;
+      }
+      p {
+        margin: 0;
+      }
+    }
   }
 }
 
-.user-preferences .watching-first-post.fa-dot-circle-o {
-  color: dark-light-choose(scale-color($primary, $lightness: 50%), scale-color($secondary, $lightness: 50%));
+.qr-code-container {
+  display: flex;
+  .qr-code {
+    padding: 5px 5px 0 5px;
+    background-color: white;
+  }
+}
+
+.primary-textual .staged,
+#user-card .staged {
+  font-style: italic;
+}
+
+.selectable-avatars {
+  max-height: 350px;
+  margin-bottom: 1em;
+  text-align: justify;
+  .selectable-avatar {
+    margin: 5px;
+    display: inline-block;
+    .avatar {
+      cursor: pointer;
+      width: 60px;
+      height: 60px;
+      &:hover {
+        box-shadow: 0 0 10px $primary;
+      }
+    }
+  }
 }

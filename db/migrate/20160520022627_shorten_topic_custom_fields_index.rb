@@ -1,4 +1,6 @@
-class ShortenTopicCustomFieldsIndex < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class ShortenTopicCustomFieldsIndex < ActiveRecord::Migration[4.2]
   def up
     remove_index :topic_custom_fields, :value
     add_index :topic_custom_fields, [:value, :name],

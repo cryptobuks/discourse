@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe Developer do
@@ -17,4 +19,3 @@ describe Developer do
     expect(guardian.is_developer?).to eq(true)
   end
 end
-

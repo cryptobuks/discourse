@@ -1,4 +1,6 @@
-class CreateActions < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CreateActions < ActiveRecord::Migration[4.2]
   def change
     create_table :actions do |t|
 
@@ -8,7 +10,6 @@ class CreateActions < ActiveRecord::Migration
       # There is a notificiation table as well that covers much of this,
       # but this table is wider and is intended for non-notifying actions as well
 
-
       t.integer :action_type, null: false
       t.integer :user_id, null: false
       t.integer :target_forum_thread_id
@@ -16,7 +17,7 @@ class CreateActions < ActiveRecord::Migration
       t.integer :target_user_id
       t.integer :acting_user_id
 
-      t.timestamps
+      t.timestamps null: false
     end
 
     add_index :actions, [:user_id, :action_type]

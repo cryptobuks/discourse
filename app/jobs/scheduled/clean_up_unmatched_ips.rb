@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Jobs
 
   class CleanUpUnmatchedIPs < Jobs::Scheduled
@@ -11,8 +13,8 @@ module Jobs
 
       # remove old unmatched IP addresses
       ScreenedIpAddress.where(action_type: ScreenedIpAddress.actions[:block])
-                       .where("last_match_at < ? OR (last_match_at IS NULL AND created_at < ?)", last_match_threshold, last_match_threshold)
-                       .destroy_all
+        .where("last_match_at < ? OR (last_match_at IS NULL AND created_at < ?)", last_match_threshold, last_match_threshold)
+        .destroy_all
     end
 
   end

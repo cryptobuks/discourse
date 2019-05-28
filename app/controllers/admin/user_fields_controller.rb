@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Admin::UserFieldsController < Admin::AdminController
 
   def self.columns
@@ -27,7 +29,7 @@ class Admin::UserFieldsController < Admin::AdminController
 
     Admin::UserFieldsController.columns.each do |col|
       unless field_params[col].nil?
-        field.send("#{col}=", field_params[col])
+        field.public_send("#{col}=", field_params[col])
       end
     end
     update_options(field)
@@ -47,12 +49,11 @@ class Admin::UserFieldsController < Admin::AdminController
 
   protected
 
-    def update_options(field)
-      options = params[:user_field][:options]
-      if options.present?
-        UserFieldOption.where(user_field_id: field.id).delete_all
-        field.user_field_options_attributes = options.map {|o| {value: o} }.uniq
-      end
+  def update_options(field)
+    options = params[:user_field][:options]
+    if options.present?
+      UserFieldOption.where(user_field_id: field.id).delete_all
+      field.user_field_options_attributes = options.map { |o| { value: o } }.uniq
     end
+  end
 end
-

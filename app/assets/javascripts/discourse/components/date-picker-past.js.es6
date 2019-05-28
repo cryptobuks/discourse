@@ -5,8 +5,10 @@ export default DatePicker.extend({
 
   _opts() {
     return {
-      defaultDate: new Date(),
-      maxDate: new Date(),
+      defaultDate:
+        moment(this.defaultDate, "YYYY-MM-DD").toDate() || new Date(),
+      setDefaultDate: !!this.defaultDate,
+      maxDate: new Date()
     };
   }
 });

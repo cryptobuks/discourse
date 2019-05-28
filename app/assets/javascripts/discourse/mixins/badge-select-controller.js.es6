@@ -1,37 +1,39 @@
-import Badge from 'discourse/models/badge';
+import Badge from "discourse/models/badge";
+import computed from "ember-addons/ember-computed-decorators";
 
 export default Ember.Mixin.create({
   saving: false,
   saved: false,
 
-  selectableUserBadges: function() {
-    let items = this.get('filteredList');
-    items = _.uniq(items, false, function(e) { return e.get('badge.name'); });
-    items.unshiftObject(Em.Object.create({
-      badge: Badge.create({name: I18n.t('badges.none')})
-    }));
+  @computed("filteredList")
+  selectableUserBadges(items) {
+    items = _.uniq(items, false, function(e) {
+      return e.get("badge.name");
+    });
+    items.unshiftObject(
+      Ember.Object.create({
+        badge: Badge.create({ name: I18n.t("badges.none") })
+      })
+    );
     return items;
-  }.property('filteredList'),
+  },
 
-  savingStatus: function() {
-    if (this.get('saving')) {
-      return I18n.t('saving');
-    } else {
-      return I18n.t('save');
-    }
-  }.property('saving'),
+  @computed("saving")
+  savingStatus(saving) {
+    return saving ? I18n.t("saving") : I18n.t("save");
+  },
 
-  selectedUserBadge: function() {
-    const selectedUserBadgeId = parseInt(this.get('selectedUserBadgeId'));
+  @computed("selectedUserBadgeId")
+  selectedUserBadge(selectedUserBadgeId) {
+    selectedUserBadgeId = parseInt(selectedUserBadgeId);
     let selectedUserBadge = null;
-    this.get('selectableUserBadges').forEach(function(userBadge) {
-      if (userBadge.get('id') === selectedUserBadgeId) {
+    this.selectableUserBadges.forEach(function(userBadge) {
+      if (userBadge.get("id") === selectedUserBadgeId) {
         selectedUserBadge = userBadge;
       }
     });
     return selectedUserBadge;
-  }.property('selectedUserBadgeId'),
+  },
 
-  disableSave: Em.computed.alias('saving')
+  disableSave: Ember.computed.alias("saving")
 });
-

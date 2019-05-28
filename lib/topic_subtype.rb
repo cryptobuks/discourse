@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class TopicSubtype
   include ActiveModel::Serialization
 
@@ -9,7 +11,7 @@ class TopicSubtype
   end
 
   def attributes
-    {'id' => @id, 'options' => @options }
+    { 'id' => @id, 'options' => @options }
   end
 
   def self.list
@@ -41,7 +43,7 @@ class TopicSubtype
     'pending_users'
   end
 
-  def self.register(name, options={})
+  def self.register(name, options = {})
     @subtypes ||= {}
     @subtypes[name] = TopicSubtype.new(name, options)
   end

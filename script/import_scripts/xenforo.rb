@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "mysql2"
 
 require File.expand_path(File.dirname(__FILE__) + "/base.rb")
@@ -9,16 +11,19 @@ class ImportScripts::XenForo < ImportScripts::Base
   XENFORO_DB = "xenforo_db"
   TABLE_PREFIX = "xf_"
   BATCH_SIZE = 1000
+  ATTACHMENT_DIR = '/tmp/attachments'
 
   def initialize
     super
-
     @client = Mysql2::Client.new(
       host: "localhost",
       username: "root",
       password: "pa$$word",
       database: XENFORO_DB
     )
+
+    @category_mappings = {}
+    @prefix_as_category = false
   end
 
   def execute
@@ -42,7 +47,7 @@ class ImportScripts::XenForo < ImportScripts::Base
 
       break if results.size < 1
 
-      next if all_records_exist? :users, results.map {|u| u["id"].to_i}
+      next if all_records_exist? :users, results.map { |u| u["id"].to_i }
 
       create_users(results, total: total_count, offset: offset) do |user|
         next if user['username'].blank?
@@ -61,7 +66,72 @@ class ImportScripts::XenForo < ImportScripts::Base
   def import_categories
     puts "", "importing categories..."
 
-    # Note that this script uses Prefix as Category, you may want to change this as per your requirement
+    categories = mysql_query("
+        SELECT node_id id,
+               title,
+               description,
+               parent_node_id,
+               display_order
+          FROM #{TABLE_PREFIX}node
+      ORDER BY parent_node_id, display_order
+      ").to_a
+
+    top_level_categories = categories.select { |c| c["parent_node_id"] == 0 }
+
+    create_categories(top_level_categories) do |c|
+      {
+        id: c['id'],
+        name: c['title'],
+        description: c['description'],
+        position: c['display_order']
+      }
+    end
+
+    top_level_category_ids = Set.new(top_level_categories.map { |c| c["id"] })
+
+    subcategories = categories.select { |c| top_level_category_ids.include?(c["parent_node_id"]) }
+
+    create_categories(subcategories) do |c|
+      {
+        id: c['id'],
+        name: c['title'],
+        description: c['description'],
+        position: c['display_order'],
+        parent_category_id: category_id_from_imported_category_id(c['parent_node_id'])
+      }
+    end
+
+    subcategory_ids = Set.new(subcategories.map { |c| c['id'] })
+
+    # deeper categories need to be tags
+    categories.each do |c|
+      next if c['parent_node_id'] == 0
+      next if top_level_category_ids.include?(c['id'])
+      next if subcategory_ids.include?(c['id'])
+
+      # Find a subcategory for topics in this category
+      parent = c
+      while !parent.nil? && !subcategory_ids.include?(parent['id'])
+        parent = categories.find { |subcat| subcat['id'] == parent['parent_node_id'] }
+      end
+
+      if parent
+        tag_name = DiscourseTagging.clean_tag(c['title'])
+        @category_mappings[c['id']] = {
+          category_id: category_id_from_imported_category_id(parent['id']),
+          tag: Tag.find_by_name(tag_name) || Tag.create(name: tag_name)
+        }
+      else
+        puts '', "Couldn't find a category for #{c['id']} '#{c['title']}'!"
+      end
+    end
+  end
+
+  # This method is an alternative to import_categories.
+  # It uses prefixes instead of nodes.
+  def import_categories_from_thread_prefixes
+    puts "", "importing categories..."
+
     categories = mysql_query("
                               SELECT prefix_id id
                               FROM #{TABLE_PREFIX}thread_prefix
@@ -74,6 +144,8 @@ class ImportScripts::XenForo < ImportScripts::Base
         name: "Category-#{category["id"]}"
       }
     end
+
+    @prefix_as_category = true
   end
 
   def import_posts
@@ -81,11 +153,10 @@ class ImportScripts::XenForo < ImportScripts::Base
 
     total_count = mysql_query("SELECT count(*) count from #{TABLE_PREFIX}post").first["count"]
 
-    batches(BATCH_SIZE) do |offset|
-      results = mysql_query("
+    posts_sql = "
         SELECT p.post_id id,
                t.thread_id topic_id,
-               t.prefix_id category_id,
+               #{@prefix_as_category ? 't.prefix_id' : 't.node_id'} category_id,
                t.title title,
                t.first_post_id first_post_id,
                p.user_id user_id,
@@ -95,12 +166,13 @@ class ImportScripts::XenForo < ImportScripts::Base
              #{TABLE_PREFIX}thread t
         WHERE p.thread_id = t.thread_id
         ORDER BY p.post_date
-        LIMIT #{BATCH_SIZE}
-        OFFSET #{offset};
-      ").to_a
+        LIMIT #{BATCH_SIZE}" # needs OFFSET
+
+    batches(BATCH_SIZE) do |offset|
+      results = mysql_query("#{posts_sql} OFFSET #{offset};").to_a
 
       break if results.size < 1
-      next if all_records_exist? :posts, results.map {|p| p['id'] }
+      next if all_records_exist? :posts, results.map { |p| p['id'] }
 
       create_posts(results, total: total_count, offset: offset) do |m|
         skip = false
@@ -115,7 +187,8 @@ class ImportScripts::XenForo < ImportScripts::Base
           if m['category_id'].to_i == 0 || m['category_id'].nil?
             mapped[:category] = SiteSetting.uncategorized_category_id
           else
-            mapped[:category] = category_id_from_imported_category_id(m['category_id'].to_i)
+            mapped[:category] = category_id_from_imported_category_id(m['category_id'].to_i) ||
+              @category_mappings[m['category_id']].try(:[], :category_id)
           end
           mapped[:title] = CGI.unescapeHTML(m['title'])
         else
@@ -129,6 +202,22 @@ class ImportScripts::XenForo < ImportScripts::Base
         end
 
         skip ? nil : mapped
+      end
+    end
+
+    # Apply tags
+    batches(BATCH_SIZE) do |offset|
+      results = mysql_query("#{posts_sql} OFFSET #{offset};").to_a
+      break if results.size < 1
+
+      results.each do |m|
+        next unless m['id'] == m['first_post_id'] && m['category_id'].to_i > 0
+        next unless tag = @category_mappings[m['category_id']].try(:[], :tag)
+        next unless topic_mapping = topic_lookup_from_imported_post_id(m['id'])
+
+        topic = Topic.find_by_id(topic_mapping[:topic_id])
+
+        topic.tags = [tag] if topic
       end
     end
 
@@ -156,11 +245,32 @@ class ImportScripts::XenForo < ImportScripts::Base
     # phpBB shortens link text like this, which breaks our markdown processing:
     #   [http://answers.yahoo.com/question/index ... 223AAkkPli](http://answers.yahoo.com/question/index?qid=20070920134223AAkkPli)
     #
+    #Fix for the error: xenforo.rb: 160: in `gsub!': invalid byte sequence in UTF-8 (ArgumentError)
+    if ! s.valid_encoding?
+      s = s.encode("UTF-16be", invalid: :replace, replace: "?").encode('UTF-8')
+    end
+
     # Work around it for now:
     s.gsub!(/\[http(s)?:\/\/(www\.)?/, '[')
 
     # [QUOTE]...[/QUOTE]
     s.gsub!(/\[quote\](.+?)\[\/quote\]/im) { "\n> #{$1}\n" }
+
+    # Nested Quotes
+    s.gsub!(/(\[\/?QUOTE.*?\])/mi) { |q| "\n#{q}\n" }
+
+    # [QUOTE="username, post: 28662, member: 1283"]
+    s.gsub!(/\[quote="(\w+), post: (\d*), member: (\d*)"\]/i) do
+      username, imported_post_id, _imported_user_id = $1, $2, $3
+
+      topic_mapping = topic_lookup_from_imported_post_id(imported_post_id)
+
+      if topic_mapping
+        "\n[quote=\"#{username}, post:#{topic_mapping[:post_number]}, topic:#{topic_mapping[:topic_id]}\"]\n"
+      else
+        "\n[quote=\"#{username}\"]\n"
+      end
+    end
 
     # [URL=...]...[/URL]
     s.gsub!(/\[url="?(.+?)"?\](.+)\[\/url\]/i) { "[#{$2}](#{$1})" }
@@ -197,7 +307,82 @@ class ImportScripts::XenForo < ImportScripts::Base
     s.gsub!(/\[color=[#a-z0-9]+\]/i, "")
     s.gsub!(/\[\/color\]/i, "")
 
+    if Dir.exist? ATTACHMENT_DIR
+      s = process_xf_attachments(:gallery, s)
+      s = process_xf_attachments(:attachment, s)
+    end
+
     s
+  end
+
+  def process_xf_attachments(xf_type, s)
+    ids = Set.new
+    ids.merge(s.scan(get_xf_regexp(xf_type)).map { |x| x[0].to_i })
+    ids.each do |id|
+      next unless id
+      sql = get_xf_sql(xf_type, id).squish!
+      results = mysql_query(sql)
+      if results.size < 1
+        # Strip attachment
+        s.gsub!(get_xf_regexp(xf_type, id), '')
+        STDERR.puts "#{xf_type.capitalize} id #{id} not found in source database. Stripping."
+        next
+      end
+      original_filename = results.first['filename']
+      result = results.first
+      upload = import_xf_attachment(result['data_id'], result['file_hash'], result['user_id'], original_filename)
+      next unless upload
+      if upload.present? && upload.persisted?
+        s.gsub!(get_xf_regexp(xf_type, id), @uploader.html_for_upload(upload, original_filename))
+      else
+        STDERR.puts "Could not find upload: #{upload.id}. Skipping attachment id #{id}"
+      end
+    end
+    s
+  end
+
+  def import_xf_attachment(data_id, file_hash, owner_id, original_filename)
+    current_filename = "#{data_id}-#{file_hash}.data"
+    path = Pathname.new(ATTACHMENT_DIR + "/#{data_id / 1000}/#{current_filename}")
+    new_path = path.dirname + original_filename
+    upload = nil
+    if File.exist? path
+      FileUtils.cp path, new_path
+      upload = @uploader.create_upload owner_id, new_path, original_filename
+      FileUtils.rm new_path
+    else
+      STDERR.puts "Could not find file #{path}. Skipping attachment id #{data_id}"
+    end
+    upload
+  end
+
+  def get_xf_regexp(type, id = nil)
+    case type
+    when :gallery
+      Regexp.new(/\[GALLERY=media,\s#{id ? id : '(\d+)'}\].+?\]/i)
+    when :attachment
+      Regexp.new(/\[ATTACH(?>=\w+)?\]#{id ? id : '(\d+)'}\[\/ATTACH\]/i)
+    end
+  end
+
+  def get_xf_sql(type, id)
+    case type
+    when :gallery
+      <<-SQL
+		SELECT m.media_id, m.media_title, a.attachment_id, a.data_id, d.filename, d.file_hash,d.user_id
+		FROM xengallery_media as m
+		INNER JOIN #{TABLE_PREFIX}attachment a on m.attachment_id = a.attachment_id
+		INNER JOIN #{TABLE_PREFIX}attachment_data d on a.data_id = d.data_id
+		WHERE media_id = #{id}
+      SQL
+    when :attachment
+      <<-SQL
+		SELECT a.attachment_id, a.data_id, d.filename, d.file_hash, d.user_id
+		FROM #{TABLE_PREFIX}attachment AS a
+		INNER JOIN #{TABLE_PREFIX}attachment_data d ON a.data_id = d.data_id
+		WHERE attachment_id = #{id}
+      SQL
+    end
   end
 
   def mysql_query(sql)

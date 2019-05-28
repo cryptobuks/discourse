@@ -1,61 +1,72 @@
+# frozen_string_literal: true
+
 require_dependency 'queued_post_serializer'
 
 class QueuedPostsController < ApplicationController
 
-  before_filter :ensure_staff
+  before_action :ensure_staff
 
   def index
-    state = QueuedPost.states[(params[:state] || 'new').to_sym]
-    state ||= QueuedPost.states[:new]
+    Discourse.deprecate("QueuedPostController#index is deprecated. Please use the Reviewable API instead.", since: "2.3.0beta5", drop_from: "2.4")
 
-    @queued_posts = QueuedPost.visible.where(state: state).includes(:topic, :user).order(:created_at)
-    render_serialized(@queued_posts,
+    status = params[:state] || 'pending'
+    status = 'pending' if status == 'new'
+
+    reviewables = Reviewable.list_for(current_user, status: status.to_sym, type: ReviewableQueuedPost.name)
+    render_serialized(reviewables,
                       QueuedPostSerializer,
                       root: :queued_posts,
                       rest_serializer: true,
                       refresh_queued_posts: "/queued_posts?status=new")
-
   end
 
   def update
-    qp = QueuedPost.where(id: params[:id]).first
+    Discourse.deprecate("QueuedPostController#update is deprecated. Please use the Reviewable API instead.", since: "2.3.0beta5", drop_from: "2.4")
+    reviewable = Reviewable.find_by(id: params[:id])
+    raise Discourse::NotFound if reviewable.blank?
 
-    if params[:queued_post][:raw].present?
-      qp.update_column(:raw, params[:queued_post][:raw])
+    update_params = params[:queued_post]
+
+    reviewable.payload['raw'] = update_params[:raw] if update_params[:raw].present?
+    if reviewable.topic_id.blank? && update_params[:state].blank?
+      reviewable.payload['title'] = update_params[:title] if update_params[:title].present?
+      reviewable.payload['tags'] = update_params[:tags]
+      reviewable.category_id = update_params[:category_id].to_i if update_params[:category_id].present?
     end
 
-    state = params[:queued_post][:state]
+    reviewable.save(validate: false)
+
+    state = update_params[:state]
     begin
       if state == 'approved'
-        qp.approve!(current_user)
+        reviewable.perform(current_user, :approve_post)
       elsif state == 'rejected'
-        qp.reject!(current_user)
-        if params[:queued_post][:delete_user] == 'true' && guardian.can_delete_user?(qp.user)
-          UserDestroyer.new(current_user).destroy(qp.user, user_deletion_opts)
+        reviewable.perform(current_user, :reject_post)
+        if update_params[:delete_user] == 'true' && guardian.can_delete_user?(reviewable.created_by)
+          UserDestroyer.new(current_user).destroy(reviewable.created_by, user_deletion_opts)
         end
       end
     rescue StandardError => e
       return render_json_error e.message
     end
 
-    render_serialized(qp, QueuedPostSerializer, root: :queued_posts)
+    render_serialized(reviewable, QueuedPostSerializer, root: :queued_posts)
   end
-
 
   private
 
-    def user_deletion_opts
-      base = {
-        context:           I18n.t('queue.delete_reason', {performed_by: current_user.username}),
-        delete_posts:      true,
-        delete_as_spammer: true
-      }
+  def user_deletion_opts
+    base = {
+      context: I18n.t('queue.delete_reason', performed_by: current_user.username),
+      delete_posts: true,
+      delete_as_spammer: true
+    }
 
-      if Rails.env.production? && ENV["Staging"].nil?
-        base.merge!({block_email: true, block_ip: true})
-      end
-
-      base
+    if Rails.env.production? && ENV["Staging"].nil?
+      base.merge!(block_email: true, block_ip: true)
     end
+
+    base
+  end
 
 end

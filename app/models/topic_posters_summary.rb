@@ -1,4 +1,8 @@
+# frozen_string_literal: true
+
 # This is used in topic lists
+require_dependency 'topic_poster'
+
 class TopicPostersSummary
   attr_reader :topic, :options
 
@@ -19,7 +23,7 @@ class TopicPostersSummary
       topic_poster.description = descriptions_for(user)
       topic_poster.primary_group = primary_group_lookup[user.id]
       if topic.last_post_user_id == user.id
-        topic_poster.extras = 'latest'
+        topic_poster.extras = +'latest'
         topic_poster.extras << ' single' if user_ids.uniq.size == 1
       end
     end
@@ -40,7 +44,7 @@ class TopicPostersSummary
 
   def shuffle_last_poster_to_back_in(summary)
     unless last_poster_is_topic_creator?
-      summary.reject!{ |u| u.id == topic.last_post_user_id }
+      summary.reject! { |u| u.id == topic.last_post_user_id }
       summary << avatar_lookup[topic.last_post_user_id]
     end
     summary

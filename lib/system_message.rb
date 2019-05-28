@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Handle sending a message to a user from the system.
 require_dependency 'post_creator'
 require_dependency 'topic_subtype'
@@ -28,6 +30,7 @@ class SystemMessage
                        raw: raw,
                        archetype: Archetype.private_message,
                        target_usernames: @recipient.username,
+                       target_group_names: Group.exists?(name: SiteSetting.site_contact_group_name) ? SiteSetting.site_contact_group_name : nil,
                        subtype: TopicSubtype.system_message,
                        skip_validations: true)
 
@@ -60,7 +63,7 @@ class SystemMessage
     {
       site_name: SiteSetting.title,
       username: @recipient.username,
-      user_preferences_url: "#{Discourse.base_url}/users/#{@recipient.username_lower}/preferences",
+      user_preferences_url: "#{Discourse.base_url}/u/#{@recipient.username_lower}/preferences",
       new_user_tips: I18n.t('system_messages.usage_tips.text_body_template', base_url: Discourse.base_url),
       site_password: "",
       base_url: Discourse.base_url,

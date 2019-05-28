@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # I like guard, don't get me wrong, but it is just not working right
 # architectually it can not do what I want it to do, this is how I want
 # it to behave
@@ -6,7 +8,7 @@ desc "Run all specs automatically as needed"
 task "autospec" => :environment do
   require 'autospec/manager'
 
-  debug = ARGV.any?{ |a|  a == "d" || a == "debug" } || ENV["DEBUG"]
+  debug = ARGV.any? { |a|  a == "d" || a == "debug" } || ENV["DEBUG"]
   force_polling = ARGV.any? { |a| a == "p" || a == "polling" }
   latency = ((ARGV.find { |a| a =~ /l=|latency=/ } || "").split("=")[1] || 3).to_i
 

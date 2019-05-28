@@ -1,4 +1,6 @@
-class RemoveCategoryGroupsOrphanedByRemovingCategoryOrGroup < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class RemoveCategoryGroupsOrphanedByRemovingCategoryOrGroup < ActiveRecord::Migration[4.2]
   def up
     execute "DELETE FROM category_groups
              WHERE group_id NOT IN (

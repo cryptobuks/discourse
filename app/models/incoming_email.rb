@@ -1,9 +1,30 @@
+# frozen_string_literal: true
+
 class IncomingEmail < ActiveRecord::Base
   belongs_to :user
   belongs_to :topic
   belongs_to :post
 
-  scope :errored,  -> { where("NOT is_bounce AND LENGTH(COALESCE(error,'')) > 0") }
+  scope :errored,  -> { where("NOT is_bounce AND error IS NOT NULL") }
+
+  scope :addressed_to, -> (email) do
+    where(<<~SQL, email: "%#{email}%")
+      incoming_emails.to_addresses ILIKE :email OR
+      incoming_emails.cc_addresses ILIKE :email
+    SQL
+  end
+
+  scope :addressed_to_user, ->(user) do
+    where(<<~SQL, user_id: user.id)
+      EXISTS(
+          SELECT 1
+          FROM user_emails
+          WHERE user_emails.user_id = :user_id AND
+                (incoming_emails.to_addresses ILIKE '%' || user_emails.email || '%' OR
+                 incoming_emails.cc_addresses ILIKE '%' || user_emails.email || '%')
+      )
+    SQL
+  end
 end
 
 # == Schema Information
@@ -33,4 +54,5 @@ end
 #  index_incoming_emails_on_error       (error)
 #  index_incoming_emails_on_message_id  (message_id)
 #  index_incoming_emails_on_post_id     (post_id)
+#  index_incoming_emails_on_user_id     (user_id) WHERE (user_id IS NOT NULL)
 #

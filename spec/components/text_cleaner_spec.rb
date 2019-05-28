@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'text_cleaner'
 
@@ -159,6 +161,11 @@ describe TextCleaner do
       expect(TextCleaner.clean_title(" \t Hello there \n ")).to eq("Hello there")
     end
 
+    it "strips zero width spaces" do
+      expect(TextCleaner.clean_title("Hello​ ​there")).to eq("Hello there")
+      expect(TextCleaner.clean_title("Hello​ ​there").length).to eq(11)
+    end
+
     context "title_prettify site setting is enabled" do
 
       before { SiteSetting.title_prettify = true }
@@ -175,6 +182,11 @@ describe TextCleaner do
         expect(TextCleaner.clean_title("HELLO THERE")).to eq("Hello there")
       end
 
+      it "doesn't replace all upper case text when uppercase posts are allowed" do
+        SiteSetting.allow_uppercase_posts = true
+        expect(TextCleaner.clean_title("HELLO THERE")).to eq("HELLO THERE")
+      end
+
       it "capitalizes first letter" do
         expect(TextCleaner.clean_title("hello there")).to eq("Hello there")
       end
@@ -184,11 +196,19 @@ describe TextCleaner do
       end
 
       it "removes extraneous space before the end punctuation" do
+        SiteSetting.title_remove_extraneous_space = true
         expect(TextCleaner.clean_title("Hello there ?")).to eq("Hello there?")
+
+        SiteSetting.title_remove_extraneous_space = false
+        expect(TextCleaner.clean_title("Hello there ?")).to eq("Hello there ?")
       end
 
       it "replaces all upper case unicode text with regular unicode case letters" do
         expect(TextCleaner.clean_title("INVESTIGAÇÃO POLÍTICA NA CÂMARA")).to eq("Investigação política na câmara")
+      end
+
+      it "doesn't downcase text if only one word is upcase in a non-ascii alphabet" do
+        expect(TextCleaner.clean_title("«Эта неделя в EVE»")).to eq("«Эта неделя в EVE»")
       end
 
       it "capitalizes first unicode letter" do
@@ -204,6 +224,7 @@ describe TextCleaner do
       whitespaces = "\u0020\u00A0\u1680\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000"
       expect(whitespaces.strip).not_to eq("")
       expect(TextCleaner.normalize_whitespaces(whitespaces).strip).to eq("")
+      expect(TextCleaner.normalize_whitespaces(nil)).to be_nil
     end
 
     it "does not muck with zero width white space" do
@@ -214,4 +235,12 @@ describe TextCleaner do
     end
   end
 
+  context "invalid byte sequence" do
+    let(:with_invalid_bytes) { "abc\u3042\x81" }
+    let(:without_invalid_bytes) { "abc\u3042" }
+
+    it "removes invalid bytes" do
+      expect(TextCleaner.clean(with_invalid_bytes)).to eq(without_invalid_bytes)
+    end
+  end
 end

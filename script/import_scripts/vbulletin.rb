@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'mysql2'
 require File.expand_path(File.dirname(__FILE__) + "/base.rb")
 require 'htmlentities'
@@ -32,9 +34,11 @@ class ImportScripts::VBulletin < ImportScripts::Base
   puts "#{DB_USER}:#{DB_PW}@#{DB_HOST} wants #{DB_NAME}"
 
   def initialize
+    @bbcode_to_md = true
+
     super
 
-    @old_username_to_new_usernames = {}
+    @usernames = {}
 
     @tz = TZInfo::Timezone.get(TIMEZONE)
 
@@ -47,7 +51,7 @@ class ImportScripts::VBulletin < ImportScripts::Base
       database: DB_NAME
     )
     rescue Exception => e
-      puts '='*50
+      puts '=' * 50
       puts e.message
       puts <<EOM
 Cannot connect in to database.
@@ -70,7 +74,6 @@ Exiting.
 EOM
       exit
   end
-
 
   def execute
     mysql_query("CREATE INDEX firstpostid_index ON #{TABLE_PREFIX}thread (firstpostid)") rescue nil
@@ -108,6 +111,14 @@ EOM
     end
   end
 
+  def get_username_for_old_username(old_username)
+    if @usernames.has_key?(old_username)
+      @usernames[old_username]
+    else
+      old_username
+    end
+  end
+
   def import_users
     puts "", "importing users"
 
@@ -117,7 +128,15 @@ EOM
 
     batches(BATCH_SIZE) do |offset|
       users = mysql_query(<<-SQL
-          SELECT userid, username, homepage, usertitle, usergroupid, joindate, email
+          SELECT userid
+               , username
+               , homepage
+               , usertitle
+               , usergroupid
+               , joindate
+               , email
+               , password
+               , salt
             FROM #{TABLE_PREFIX}user
            WHERE userid > #{last_user_id}
         ORDER BY userid
@@ -128,12 +147,13 @@ EOM
       break if users.empty?
 
       last_user_id = users[-1]["userid"]
-      before = users.size
-      users.reject! { |u| @lookup.user_already_imported?(u["userid"].to_i) }
+      users.reject! { |u| @lookup.user_already_imported?(u["userid"]) }
 
       create_users(users, total: user_count, offset: offset) do |user|
         email = user["email"].presence || fake_email
         email = fake_email unless email[EmailValidator.email_regex]
+
+        password = [user["password"].presence, user["salt"].presence].compact.join(":")
 
         username = @htmlentities.decode(user["username"]).strip
 
@@ -141,20 +161,23 @@ EOM
           id: user["userid"],
           name: username,
           username: username,
+          password: password,
           email: email,
+          merge: true,
           website: user["homepage"].strip,
           title: @htmlentities.decode(user["usertitle"]).strip,
           primary_group_id: group_id_from_imported_group_id(user["usergroupid"].to_i),
           created_at: parse_timestamp(user["joindate"]),
           last_seen_at: parse_timestamp(user["lastvisit"]),
           post_create_action: proc do |u|
-            @old_username_to_new_usernames[user["username"]] = u.username
             import_profile_picture(user, u)
             import_profile_background(user, u)
           end
         }
       end
     end
+
+    @usernames = UserCustomField.joins(:user).where(name: 'import_username').pluck('user_custom_fields.value', 'users.username').to_h
   end
 
   def create_groups_membership
@@ -169,10 +192,8 @@ EOM
         next if user_ids_in_group.size == 0
         values = user_ids_in_group.map { |user_id| "(#{group.id}, #{user_id}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)" }.join(",")
 
-        User.exec_sql <<-SQL
-          BEGIN;
-          INSERT INTO group_users (group_id, user_id, created_at, updated_at) VALUES #{values};
-          COMMIT;
+        DB.exec <<~SQL
+          INSERT INTO group_users (group_id, user_id, created_at, updated_at) VALUES #{values}
         SQL
 
         Group.reset_counters(group.id, :group_users)
@@ -201,7 +222,7 @@ EOM
     file.write(picture["filedata"].encode("ASCII-8BIT").force_encoding("UTF-8"))
     file.rewind
 
-    upload = Upload.create_for(imported_user.id, file, picture["filename"], file.size)
+    upload = UploadCreator.new(file, picture["filename"]).create_for(imported_user.id)
 
     return if !upload.persisted?
 
@@ -231,11 +252,11 @@ EOM
     file.write(background["filedata"].encode("ASCII-8BIT").force_encoding("UTF-8"))
     file.rewind
 
-    upload = Upload.create_for(imported_user.id, file, background["filename"], file.size)
+    upload = UploadCreator.new(file, background["filename"]).create_for(imported_user.id)
 
     return if !upload.persisted?
 
-    imported_user.user_profile.update(profile_background: upload.url)
+    imported_user.user_profile.upload_profile_background(upload)
   ensure
     file.close rescue nil
     file.unlink rescue nil
@@ -322,16 +343,17 @@ EOM
         t
       end
 
-      # uncomment below lines to create permalink
-      # topics.each do |thread|
-      #   topic_id = "thread-#{thread["threadid"]}"
-      #   topic = topic_lookup_from_imported_post_id(topic_id)
-      #   if topic.present?
-      #     title_slugified = thread["title"].gsub(" ","-").gsub(".","-") if thread["title"].present?
-      #     url_slug = "threads/#{thread["threadid"]}-#{title_slugified}" if thread["title"].present?
-      #     Permalink.create(url: url_slug, topic_id: topic[:topic_id].to_i) if url_slug.present? && topic[:topic_id].present?
-      #   end
-      # end
+      # Add the following to permalink_normalizations for this to work:
+      # /forum\/.*?\/(\d*)\-.*/thread/\1
+
+      topics.each do |thread|
+        topic_id = "thread-#{thread["threadid"]}"
+        topic = topic_lookup_from_imported_post_id(topic_id)
+        if topic.present?
+          url_slug = "thread/#{thread["threadid"]}" if thread["title"].present?
+          Permalink.create(url: url_slug, topic_id: topic[:topic_id].to_i) if url_slug.present? && topic[:topic_id].present?
+        end
+      end
 
     end
   end
@@ -389,8 +411,9 @@ EOM
   # find the uploaded file information from the db
   def find_upload(post, attachment_id)
     sql = "SELECT a.attachmentid attachment_id, a.userid user_id, a.filedataid file_id, a.filename filename,
-                  a.caption caption
+                  LENGTH(fd.filedata) AS dbsize, filedata, a.caption caption
              FROM #{TABLE_PREFIX}attachment a
+             LEFT JOIN #{TABLE_PREFIX}filedata fd ON fd.filedataid = a.filedataid
             WHERE a.attachmentid = #{attachment_id}"
     results = mysql_query(sql)
 
@@ -400,13 +423,22 @@ EOM
     end
 
     filename = File.join(ATTACHMENT_DIR, row['user_id'].to_s.split('').join('/'), "#{row['file_id']}.attach")
-    unless File.exists?(filename)
-      puts "Attachment file doesn't exist: #{filename}"
-      return
-    end
-
     real_filename = row['filename']
     real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
+
+    unless File.exists?(filename)
+      if row['dbsize'].to_i == 0
+        puts "Attachment file #{row['filedataid']} doesn't exist"
+        return nil
+      end
+
+      tmpfile = 'attach_' + row['filedataid'].to_s
+      filename = File.join('/tmp/', tmpfile)
+      File.open(filename, 'wb') { |f|
+        f.write(row['filedata'])
+      }
+    end
+
     upload = create_upload(post.user.id, filename, real_filename)
 
     if upload.nil? || !upload.valid?
@@ -421,7 +453,6 @@ EOM
     puts e.message
     puts sql
   end
-
 
   def import_private_messages
     puts "", "importing private messages..."
@@ -536,7 +567,6 @@ EOM
     end
   end
 
-
   def import_attachments
     puts '', 'importing attachments...'
 
@@ -574,7 +604,7 @@ EOM
       end
 
       if new_raw != post.raw
-        PostRevisor.new(post).revise!(post.user, { raw: new_raw }, { bypass_bump: true, edit_reason: 'Import attachments from vBulletin' })
+        PostRevisor.new(post).revise!(post.user, { raw: new_raw }, bypass_bump: true, edit_reason: 'Import attachments from vBulletin')
       end
 
       success_count += 1
@@ -612,7 +642,7 @@ EOM
       WHERE id IN (SELECT topic_id FROM closed_topic_ids)
     SQL
 
-    Topic.exec_sql(sql, closed_topic_ids)
+    DB.exec(sql, closed_topic_ids)
   end
 
   def post_process_posts
@@ -623,8 +653,9 @@ EOM
 
     Post.find_each do |post|
       begin
+        old_raw = post.raw.dup
         new_raw = postprocess_post_raw(post.raw)
-        if new_raw != post.raw
+        if new_raw != old_raw
           post.raw = new_raw
           post.save
         end
@@ -688,11 +719,8 @@ EOM
 
     # [MENTION]<username>[/MENTION]
     raw.gsub!(/\[mention\](.+?)\[\/mention\]/i) do
-      old_username = $1
-      if @old_username_to_new_usernames.has_key?(old_username)
-        old_username = @old_username_to_new_usernames[old_username]
-      end
-      "@#{old_username}"
+      new_username = get_username_for_old_username($1)
+      "@#{new_username}"
     end
 
     # [FONT=blah] and [COLOR=blah]
@@ -701,6 +729,7 @@ EOM
     raw.gsub! /\[COLOR=#.*?\](.*?)\[\/COLOR\]/im, '\1'
 
     raw.gsub! /\[SIZE=.*?\](.*?)\[\/SIZE\]/im, '\1'
+    raw.gsub! /\[SUP\](.*?)\[\/SUP\]/im, '\1'
     raw.gsub! /\[h=.*?\](.*?)\[\/h\]/im, '\1'
 
     # [CENTER]...[/CENTER]
@@ -708,10 +737,18 @@ EOM
 
     # [INDENT]...[/INDENT]
     raw.gsub! /\[INDENT\](.*?)\[\/INDENT\]/im, '\1'
-    raw.gsub! /\[TABLE\](.*?)\[\/TABLE\]/im, '\1'
-    raw.gsub! /\[TR\](.*?)\[\/TR\]/im, '\1'
-    raw.gsub! /\[TD\](.*?)\[\/TD\]/im, '\1'
-    raw.gsub! /\[TD="?.*?"?\](.*?)\[\/TD\]/im, '\1'
+
+    # Tables to MD
+    raw.gsub!(/\[TABLE.*?\](.*?)\[\/TABLE\]/im) { |t|
+      rows = $1.gsub!(/\s*\[TR\](.*?)\[\/TR\]\s*/im) { |r|
+        cols = $1.gsub! /\s*\[TD.*?\](.*?)\[\/TD\]\s*/im, '|\1'
+        "#{cols}|\n"
+      }
+      header, rest = rows.split "\n", 2
+      c = header.count "|"
+      sep = "|---" * (c - 1)
+      "#{header}\n#{sep}|\n#{rest}\n"
+    }
 
     # [QUOTE]...[/QUOTE]
     raw.gsub!(/\[quote\](.+?)\[\/quote\]/im) { |quote|
@@ -722,10 +759,8 @@ EOM
     # [QUOTE=<username>]...[/QUOTE]
     raw.gsub!(/\[quote=([^;\]]+)\](.+?)\[\/quote\]/im) do
       old_username, quote = $1, $2
-      if @old_username_to_new_usernames.has_key?(old_username)
-        old_username = @old_username_to_new_usernames[old_username]
-      end
-      "\n[quote=\"#{old_username}\"]\n#{quote}\n[/quote]\n"
+      new_username = get_username_for_old_username(old_username)
+      "\n[quote=\"#{new_username}\"]\n#{quote}\n[/quote]\n"
     end
 
     # [YOUTUBE]<id>[/YOUTUBE]
@@ -733,6 +768,9 @@ EOM
 
     # [VIDEO=youtube;<id>]...[/VIDEO]
     raw.gsub!(/\[video=youtube;([^\]]+)\].*?\[\/video\]/i) { "\n//youtu.be/#{$1}\n" }
+
+    # Fix uppercase B U and I tags
+    raw.gsub!(/(\[\/?[BUI]\])/i) { $1.downcase }
 
     # More Additions ....
 
@@ -763,16 +801,19 @@ EOM
     raw.gsub!(/\[quote=([^;]+);(\d+)\](.+?)\[\/quote\]/im) do
       old_username, post_id, quote = $1, $2, $3
 
-      if @old_username_to_new_usernames.has_key?(old_username)
-        old_username = @old_username_to_new_usernames[old_username]
-      end
+      new_username = get_username_for_old_username(old_username)
+
+      # There is a bug here when the first post in a topic is quoted.
+      # The first post in a topic does not have an post_custom_field referring to the post number,
+      # but it refers to thread-XXX instead, so this lookup fails miserably then.
+      # Fixing this would imply rewriting that logic completely.
 
       if topic_lookup = topic_lookup_from_imported_post_id(post_id)
         post_number = topic_lookup[:post_number]
         topic_id    = topic_lookup[:topic_id]
-        "\n[quote=\"#{old_username},post:#{post_number},topic:#{topic_id}\"]\n#{quote}\n[/quote]\n"
+        "\n[quote=\"#{new_username},post:#{post_number},topic:#{topic_id}\"]\n#{quote}\n[/quote]\n"
       else
-        "\n[quote=\"#{old_username}\"]\n#{quote}\n[/quote]\n"
+        "\n[quote=\"#{new_username}\"]\n#{quote}\n[/quote]\n"
       end
     end
 
@@ -828,7 +869,6 @@ EOM
     raw
   end
 
-
   def create_permalink_file
     puts '', 'Creating Permalink File...', ''
 
@@ -857,7 +897,6 @@ EOM
     end
 
   end
-
 
   def suspend_users
     puts '', "updating banned users"
@@ -892,10 +931,6 @@ EOM
 
   def parse_timestamp(timestamp)
     Time.zone.at(@tz.utc_to_local(timestamp))
-  end
-
-  def fake_email
-    SecureRandom.hex << "@domain.com"
   end
 
   def mysql_query(sql)

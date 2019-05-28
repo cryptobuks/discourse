@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # A class we can use to serialize the site data
 require_dependency 'score_calculator'
 require_dependency 'trust_level'
@@ -5,8 +7,12 @@ require_dependency 'trust_level'
 class Site
   include ActiveModel::Serialization
 
+  cattr_accessor :preloaded_category_custom_fields
+  self.preloaded_category_custom_fields = Set.new
+
   def initialize(guardian)
     @guardian = guardian
+    Category.preload_custom_fields(categories, preloaded_category_custom_fields) if preloaded_category_custom_fields.present?
   end
 
   def site_setting
@@ -43,9 +49,12 @@ class Site
         end
       end
 
-      allowed_topic_create_ids =
-        @guardian.anonymous? ? [] : Category.topic_create_allowed(@guardian).pluck(:id)
-      allowed_topic_create = Set.new(allowed_topic_create_ids)
+      allowed_topic_create = nil
+      unless @guardian.is_admin?
+        allowed_topic_create_ids =
+          @guardian.anonymous? ? [] : Category.topic_create_allowed(@guardian).pluck(:id)
+        allowed_topic_create = Set.new(allowed_topic_create_ids)
+      end
 
       by_id = {}
 
@@ -58,7 +67,7 @@ class Site
 
       categories.each do |category|
         category.notification_level = category_user[category.id] || regular
-        category.permission = CategoryGroup.permission_types[:full] if allowed_topic_create.include?(category.id)
+        category.permission = CategoryGroup.permission_types[:full] if allowed_topic_create&.include?(category.id) || @guardian.is_admin?
         category.has_children = with_children.include?(category.id)
         by_id[category.id] = category
       end
@@ -68,12 +77,20 @@ class Site
     end
   end
 
-  def suppressed_from_homepage_category_ids
-    categories.select { |c| c.suppress_from_homepage == true }.map(&:id)
+  def groups
+    Group.visible_groups(@guardian.user, "name ASC", include_everyone: true)
+  end
+
+  def suppressed_from_latest_category_ids
+    categories.select { |c| c.suppress_from_latest == true }.map(&:id)
   end
 
   def archetypes
     Archetype.list.reject { |t| t.id == Archetype.private_message }
+  end
+
+  def auth_providers
+    Discourse.enabled_auth_providers
   end
 
   def self.json_for(guardian)
@@ -84,6 +101,9 @@ class Site
         filters: Discourse.filters.map(&:to_s),
         user_fields: UserField.all.map do |userfield|
           UserFieldSerializer.new(userfield, root: false, scope: guardian)
+        end,
+        auth_providers: Discourse.enabled_auth_providers.map do |provider|
+          AuthProviderSerializer.new(provider, root: false, scope: guardian)
         end
       }.to_json
     end
@@ -115,10 +135,12 @@ class Site
     json
   end
 
+  SITE_JSON_CHANNEL = '/site_json'
+
   def self.clear_anon_cache!
     # publishing forces the sequence up
     # the cache is validated based on the sequence
-    MessageBus.publish('/site_json','')
+    MessageBus.publish(SITE_JSON_CHANNEL, '')
   end
 
 end

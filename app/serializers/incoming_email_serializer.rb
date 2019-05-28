@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class IncomingEmailSerializer < ApplicationSerializer
 
   attributes :id,
@@ -27,6 +29,10 @@ class IncomingEmailSerializer < ApplicationSerializer
   def cc_addresses
     return if object.cc_addresses.blank?
     object.cc_addresses.split(";")
+  end
+
+  def error
+    @object.error.presence || I18n.t("emails.incoming.unrecognized_error")
   end
 
 end

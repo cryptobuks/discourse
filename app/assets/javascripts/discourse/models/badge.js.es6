@@ -1,14 +1,15 @@
-import { ajax } from 'discourse/lib/ajax';
-import BadgeGrouping from 'discourse/models/badge-grouping';
-import RestModel from 'discourse/models/rest';
+import { ajax } from "discourse/lib/ajax";
+import BadgeGrouping from "discourse/models/badge-grouping";
+import RestModel from "discourse/models/rest";
+import computed from "ember-addons/ember-computed-decorators";
 
 const Badge = RestModel.extend({
+  newBadge: Ember.computed.none("id"),
 
-  newBadge: Em.computed.none('id'),
-
-  url: function() {
-    return Discourse.getURL(`/badges/${this.get('id')}/${this.get('slug')}`);
-  }.property(),
+  @computed
+  url() {
+    return Discourse.getURL(`/badges/${this.id}/${this.slug}`);
+  },
 
   /**
     Update this badge with the response returned by the server on save.
@@ -25,17 +26,18 @@ const Badge = RestModel.extend({
     }
     if (json.badge_types) {
       json.badge_types.forEach(function(badgeType) {
-        if (badgeType.id === self.get('badge_type_id')) {
-          self.set('badge_type', Object.create(badgeType));
+        if (badgeType.id === self.get("badge_type_id")) {
+          self.set("badge_type", Object.create(badgeType));
         }
       });
     }
   },
 
-  badgeTypeClassName: function() {
-    const type = this.get('badge_type.name') || "";
+  @computed("badge_type.name")
+  badgeTypeClassName(type) {
+    type = type || "";
     return "badge-type-" + type.toLowerCase();
-  }.property('badge_type.name'),
+  },
 
   /**
     Save and update the badge from the server's response.
@@ -45,24 +47,26 @@ const Badge = RestModel.extend({
   **/
   save: function(data) {
     let url = "/admin/badges",
-        requestType = "POST";
+      requestType = "POST";
     const self = this;
 
-    if (this.get('id')) {
+    if (this.id) {
       // We are updating an existing badge.
-      url += "/" + this.get('id');
+      url += "/" + this.id;
       requestType = "PUT";
     }
 
     return ajax(url, {
       type: requestType,
       data: data
-    }).then(function(json) {
-      self.updateFromJson(json);
-      return self;
-    }).catch(function(error) {
-      throw error;
-    });
+    })
+      .then(function(json) {
+        self.updateFromJson(json);
+        return self;
+      })
+      .catch(function(error) {
+        throw new Error(error);
+      });
   },
 
   /**
@@ -72,8 +76,8 @@ const Badge = RestModel.extend({
     @returns {Promise} A promise that resolves to the server response
   **/
   destroy: function() {
-    if (this.get('newBadge')) return Ember.RSVP.resolve();
-    return ajax("/admin/badges/" + this.get('id'), {
+    if (this.newBadge) return Ember.RSVP.resolve();
+    return ajax("/admin/badges/" + this.id, {
       type: "DELETE"
     });
   }
@@ -90,16 +94,18 @@ Badge.reopenClass({
   createFromJson: function(json) {
     // Create BadgeType objects.
     const badgeTypes = {};
-    if ('badge_types' in json) {
+    if ("badge_types" in json) {
       json.badge_types.forEach(function(badgeTypeJson) {
         badgeTypes[badgeTypeJson.id] = Ember.Object.create(badgeTypeJson);
       });
     }
 
     const badgeGroupings = {};
-    if ('badge_groupings' in json) {
+    if ("badge_groupings" in json) {
       json.badge_groupings.forEach(function(badgeGroupingJson) {
-        badgeGroupings[badgeGroupingJson.id] = BadgeGrouping.create(badgeGroupingJson);
+        badgeGroupings[badgeGroupingJson.id] = BadgeGrouping.create(
+          badgeGroupingJson
+        );
       });
     }
 
@@ -112,8 +118,11 @@ Badge.reopenClass({
     }
     badges = badges.map(function(badgeJson) {
       const badge = Badge.create(badgeJson);
-      badge.set('badge_type', badgeTypes[badge.get('badge_type_id')]);
-      badge.set('badge_grouping', badgeGroupings[badge.get('badge_grouping_id')]);
+      badge.set("badge_type", badgeTypes[badge.get("badge_type_id")]);
+      badge.set(
+        "badge_grouping",
+        badgeGroupings[badge.get("badge_grouping_id")]
+      );
       return badge;
     });
 
@@ -132,10 +141,12 @@ Badge.reopenClass({
   **/
   findAll: function(opts) {
     let listable = "";
-    if(opts && opts.onlyListable){
+    if (opts && opts.onlyListable) {
       listable = "?only_listable=true";
     }
-    return ajax('/badges.json' + listable, { data: opts }).then(function(badgesJson) {
+    return ajax("/badges.json" + listable, { data: opts }).then(function(
+      badgesJson
+    ) {
       return Badge.createFromJson(badgesJson);
     });
   },

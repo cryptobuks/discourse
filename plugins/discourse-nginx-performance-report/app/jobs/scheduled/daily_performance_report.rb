@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Jobs
   class DailyPerformanceReport < Jobs::Scheduled
     every 1.day
@@ -44,7 +46,6 @@ module Jobs
                            category: staff_category.name,
                            title: I18n.t('performance_report.initial_topic_title'),
                            skip_validations: true)
-
 
       unless post && post.topic_id
         raise StandardError, "Could not create or retrieve performance report topic id"

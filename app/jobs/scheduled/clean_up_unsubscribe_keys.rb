@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Jobs
 
   class CleanUpUnsubscribeKeys < Jobs::Scheduled
@@ -10,4 +12,3 @@ module Jobs
   end
 
 end
-

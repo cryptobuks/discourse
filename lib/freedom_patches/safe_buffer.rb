@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 # For some reason safe buffer is getting invalid encoding in some cases
 # we work around the issue and log the problems
 #
 # The alternative is a broken website when this happens
 
 class ActiveSupport::SafeBuffer
-  def concat(value, raise_encoding_err=false)
+  def concat(value, raise_encoding_err = false)
     if !html_safe? || value.html_safe?
       super(value)
     else
@@ -15,20 +17,20 @@ class ActiveSupport::SafeBuffer
       raise
     else
 
-      encoding_diags = "internal encoding #{Encoding.default_internal}, external encoding #{Encoding.default_external}"
+      encoding_diags = +"internal encoding #{Encoding.default_internal}, external encoding #{Encoding.default_external}"
 
-      unless encoding == Encoding::UTF_8
+      if encoding != Encoding::UTF_8
         encoding_diags << " my encoding is #{encoding} "
 
         self.force_encoding("UTF-8")
         unless valid_encoding?
-          encode!("utf-16","utf-8",:invalid => :replace)
-          encode!("utf-8","utf-16")
+          encode!("utf-16", "utf-8", invalid: :replace)
+          encode!("utf-8", "utf-16")
         end
         Rails.logger.warn("Encountered a non UTF-8 string in SafeBuffer - #{self} - #{encoding_diags}")
       end
 
-      unless value.encoding == Encoding::UTF_8
+      if value.encoding != Encoding::UTF_8
 
         encoding_diags << " attempted to append encoding  #{value.encoding} "
 
@@ -36,7 +38,7 @@ class ActiveSupport::SafeBuffer
         Rails.logger.warn("Attempted to concat a non UTF-8 string in SafeBuffer - #{value} - #{encoding_diags}")
       end
 
-      concat(value,_raise=true)
+      concat(value, _raise = true)
     end
   end
 

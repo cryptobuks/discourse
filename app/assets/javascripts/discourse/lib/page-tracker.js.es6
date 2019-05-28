@@ -1,53 +1,70 @@
-import deprecated from 'discourse-common/lib/deprecated';
-
-const PageTracker = Ember.Object.extend(Ember.Evented);
-let _pageTracker = PageTracker.create();
-
 let _started = false;
 
 const cache = {};
 let transitionCount = 0;
 
 export function setTransient(key, data, count) {
-  cache[key] = {data, target: transitionCount + count};
+  cache[key] = { data, target: transitionCount + count };
 }
 
 export function getTransient(key) {
   return cache[key];
 }
 
-export function startPageTracking(router) {
-  if (_started) { return; }
+export function startPageTracking(router, appEvents) {
+  if (_started) {
+    return;
+  }
+  router.on("routeDidChange", transition => {
+    // we ocassionally prevent tracking of replaced pages when only query params changed
+    // eg: google analytics
+    const replacedOnlyQueryParams =
+      transition.urlMethod === "replace" && transition.queryParamsOnly;
 
-  router.on('didTransition', function() {
-    this.send('refreshTitle');
-    const url = Discourse.getURL(this.get('url'));
+    router.send("refreshTitle");
+    const url = Discourse.getURL(router.get("url"));
 
     // Refreshing the title is debounced, so we need to trigger this in the
     // next runloop to have the correct title.
-    Em.run.next(() => _pageTracker.trigger('change', url, Discourse.get('_docTitle')));
+    Ember.run.next(() => {
+      let title = Discourse.get("_docTitle");
+
+      appEvents.trigger("page:changed", {
+        url,
+        title,
+        currentRouteName: router.get("currentRouteName"),
+        replacedOnlyQueryParams
+      });
+    });
 
     transitionCount++;
-    _.each(cache, (v,k) => {
+    Object.keys(cache).forEach(k => {
+      const v = cache[k];
       if (v && v.target && v.target < transitionCount) {
         delete cache[k];
       }
     });
   });
+
   _started = true;
 }
 
-export function onPageChange(fn) {
-  _pageTracker.on('change', fn);
+const _gtmPageChangedCallbacks = [];
+
+export function addGTMPageChangedCallback(callback) {
+  _gtmPageChangedCallbacks.push(callback);
 }
 
-// backwards compatibility
-const BackwardsCompat = {
-  current() {
-    deprecated(`Using PageTracker.current() is deprecated. Your plugin should use the PluginAPI`);
-    return _pageTracker;
-  }
-};
+export function googleTagManagerPageChanged(data) {
+  let gtmData = {
+    event: "virtualPageView",
+    page: {
+      title: data.title,
+      url: data.url
+    }
+  };
 
-Discourse.PageTracker = BackwardsCompat;
-export default BackwardsCompat;
+  _gtmPageChangedCallbacks.forEach(callback => callback(gtmData));
+
+  window.dataLayer.push(gtmData);
+}

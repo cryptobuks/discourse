@@ -1,20 +1,28 @@
+# frozen_string_literal: true
+
 require "backup_restore/backup_restore"
-require "email_backup_token"
+require "backup_restore/backup_store"
 
 class Admin::BackupsController < Admin::AdminController
-
-  skip_before_filter :check_xhr, only: [:index, :show, :logs, :check_backup_chunk, :upload_backup_chunk]
+  before_action :ensure_backups_enabled
+  skip_before_action :check_xhr, only: [:index, :show, :logs, :check_backup_chunk, :upload_backup_chunk]
 
   def index
     respond_to do |format|
       format.html do
-        store_preloaded("backups", MultiJson.dump(serialize_data(Backup.all, BackupSerializer)))
         store_preloaded("operations_status", MultiJson.dump(BackupRestore.operations_status))
         store_preloaded("logs", MultiJson.dump(BackupRestore.logs))
         render "default/empty"
       end
+
       format.json do
-        render_serialized(Backup.all, BackupSerializer)
+        store = BackupRestore::BackupStore.create
+
+        begin
+          render_serialized(store.files, BackupFileSerializer)
+        rescue BackupRestore::BackupStore::StorageError => e
+          render_json_error(e)
+        end
       end
     end
   end
@@ -31,7 +39,7 @@ class Admin::BackupsController < Admin::AdminController
     }
     BackupRestore.backup!(current_user.id, opts)
   rescue BackupRestore::OperationRunningError
-    render json: failed_json.merge(message: I18n.t("backup.operation_already_running"))
+    render_error("backup.operation_already_running")
   else
     StaffActionLogger.new(current_user).log_backup_create
     render json: success_json
@@ -40,48 +48,59 @@ class Admin::BackupsController < Admin::AdminController
   def cancel
     BackupRestore.cancel!
   rescue BackupRestore::OperationRunningError
-    render json: failed_json.merge(message: I18n.t("backup.operation_already_running"))
+    render_error("backup.operation_already_running")
   else
     render json: success_json
   end
 
   def email
-    if backup = Backup[params.fetch(:id)]
-      token = EmailBackupToken.set(current_user.id)
-      download_url = "#{url_for(controller: 'backups', action: 'show')}?token=#{token}"
-      Jobs.enqueue(:download_backup_email, to_address: current_user.email, backup_file_path: download_url)
-      render nothing: true
+    store = BackupRestore::BackupStore.create
+
+    if store.file(params.fetch(:id)).present?
+      Jobs.enqueue(
+        :download_backup_email,
+        user_id: current_user.id,
+        backup_file_path: url_for(controller: 'backups', action: 'show')
+      )
+
+      render body: nil
     else
-      render nothing: true, status: 404
+      render body: nil, status: 404
     end
   end
 
   def show
-
     if !EmailBackupToken.compare(current_user.id, params.fetch(:token))
       @error = I18n.t('download_backup_mailer.no_token')
+      return render template: 'admin/backups/show.html.erb', layout: 'no_ember', status: 422
     end
-    if !@error && backup = Backup[params.fetch(:id)]
+
+    store = BackupRestore::BackupStore.create
+
+    if backup = store.file(params.fetch(:id), include_download_source: true)
       EmailBackupToken.del(current_user.id)
       StaffActionLogger.new(current_user).log_backup_download(backup)
-      headers['Content-Length'] = File.size(backup.path).to_s
-      send_file backup.path
-    else
-      if @error
-        render layout: 'no_ember', status: 422
+
+      if store.remote?
+        redirect_to backup.source
       else
-        render nothing: true, status: 404
+        headers['Content-Length'] = File.size(backup.source).to_s
+        send_file backup.source
       end
+    else
+      render body: nil, status: 404
     end
   end
 
   def destroy
-    if backup = Backup[params.fetch(:id)]
+    store = BackupRestore::BackupStore.create
+
+    if backup = store.file(params.fetch(:id))
       StaffActionLogger.new(current_user).log_backup_destroy(backup)
-      backup.remove
-      render nothing: true
+      store.delete_file(backup.filename)
+      render body: nil
     else
-      render nothing: true, status: 404
+      render body: nil, status: 404
     end
   end
 
@@ -97,10 +116,9 @@ class Admin::BackupsController < Admin::AdminController
       client_id: params.fetch(:client_id),
       publish_to_message_bus: true,
     }
-    SiteSetting.set_and_log(:disable_emails, true, current_user)
     BackupRestore.restore!(current_user.id, opts)
   rescue BackupRestore::OperationRunningError
-    render json: failed_json.merge(message: I18n.t("backup.operation_already_running"))
+    render_error("backup.operation_already_running")
   else
     render json: success_json
   end
@@ -108,7 +126,7 @@ class Admin::BackupsController < Admin::AdminController
   def rollback
     BackupRestore.rollback!
   rescue BackupRestore::OperationRunningError
-    render json: failed_json.merge(message: I18n.t("backup.operation_already_running"))
+    render_error("backup.operation_already_running")
   else
     render json: success_json
   end
@@ -125,39 +143,39 @@ class Admin::BackupsController < Admin::AdminController
 
     StaffActionLogger.new(current_user).log_change_readonly_mode(enable)
 
-    render nothing: true
+    render body: nil
   end
 
   def check_backup_chunk
-    identifier         = params.fetch(:resumableIdentifier)
-    filename           = params.fetch(:resumableFilename)
-    chunk_number       = params.fetch(:resumableChunkNumber)
+    identifier = params.fetch(:resumableIdentifier)
+    filename = params.fetch(:resumableFilename)
+    chunk_number = params.fetch(:resumableChunkNumber)
     current_chunk_size = params.fetch(:resumableCurrentChunkSize).to_i
 
     # path to chunk file
-    chunk = Backup.chunk_path(identifier, filename, chunk_number)
+    chunk = BackupRestore::LocalBackupStore.chunk_path(identifier, filename, chunk_number)
     # check chunk upload status
     status = HandleChunkUpload.check_chunk(chunk, current_chunk_size: current_chunk_size)
 
-    render nothing: true, status: status
+    render body: nil, status: status
   end
 
   def upload_backup_chunk
-    filename   = params.fetch(:resumableFilename)
+    filename = params.fetch(:resumableFilename)
     total_size = params.fetch(:resumableTotalSize).to_i
 
-    return render status: 415, text: I18n.t("backup.backup_file_should_be_tar_gz") unless /\.(tar\.gz|t?gz)$/i =~ filename
-    return render status: 415, text: I18n.t("backup.not_enough_space_on_disk")     unless has_enough_space_on_disk?(total_size)
-    return render status: 415, text: I18n.t("backup.invalid_filename") unless !!(/^[a-zA-Z0-9\._\-]+$/ =~ filename)
+    return render status: 415, plain: I18n.t("backup.backup_file_should_be_tar_gz") unless valid_extension?(filename)
+    return render status: 415, plain: I18n.t("backup.not_enough_space_on_disk") unless has_enough_space_on_disk?(total_size)
+    return render status: 415, plain: I18n.t("backup.invalid_filename") unless valid_filename?(filename)
 
-    file               = params.fetch(:file)
-    identifier         = params.fetch(:resumableIdentifier)
-    chunk_number       = params.fetch(:resumableChunkNumber).to_i
-    chunk_size         = params.fetch(:resumableChunkSize).to_i
+    file = params.fetch(:file)
+    identifier = params.fetch(:resumableIdentifier)
+    chunk_number = params.fetch(:resumableChunkNumber).to_i
+    chunk_size = params.fetch(:resumableChunkSize).to_i
     current_chunk_size = params.fetch(:resumableCurrentChunkSize).to_i
 
     # path to chunk file
-    chunk = Backup.chunk_path(identifier, filename, chunk_number)
+    chunk = BackupRestore::LocalBackupStore.chunk_path(identifier, filename, chunk_number)
     # upload chunk
     HandleChunkUpload.upload_chunk(chunk, file: file)
 
@@ -168,7 +186,27 @@ class Admin::BackupsController < Admin::AdminController
       Jobs.enqueue_in(5.seconds, :backup_chunks_merger, filename: filename, identifier: identifier, chunks: chunk_number)
     end
 
-    render nothing: true
+    render body: nil
+  end
+
+  def create_upload_url
+    params.require(:filename)
+    filename = params.fetch(:filename)
+
+    return render_json_error(I18n.t("backup.backup_file_should_be_tar_gz")) unless valid_extension?(filename)
+    return render_json_error(I18n.t("backup.invalid_filename")) unless valid_filename?(filename)
+
+    store = BackupRestore::BackupStore.create
+
+    begin
+      upload_url = store.generate_upload_url(filename)
+    rescue BackupRestore::BackupStore::BackupFileExists
+      return render_json_error(I18n("backup.file_exists"))
+    rescue BackupRestore::BackupStore::StorageError => e
+      return render_json_error(e)
+    end
+
+    render json: success_json.merge(url: upload_url)
   end
 
   private
@@ -177,4 +215,19 @@ class Admin::BackupsController < Admin::AdminController
     `df -Pk #{Rails.root}/public/backups | awk 'NR==2 {print $4 * 1024;}'`.to_i > size
   end
 
+  def ensure_backups_enabled
+    raise Discourse::InvalidAccess.new unless SiteSetting.enable_backups?
+  end
+
+  def valid_extension?(filename)
+    /\.(tar\.gz|t?gz)$/i =~ filename
+  end
+
+  def valid_filename?(filename)
+    !!(/^[a-zA-Z0-9\._\-]+$/ =~ filename)
+  end
+
+  def render_error(message_key)
+    render json: failed_json.merge(message: I18n.t(message_key))
+  end
 end

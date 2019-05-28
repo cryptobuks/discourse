@@ -15,18 +15,16 @@ sv:
         one: "totalt antal röst"
         other: "totalt antal röster"
       average_rating: "Medelbetyg: <strong>%{average}</strong>."
-      public:
-        title: "Omröstningar är allmänna."
       multiple:
         help:
           at_least_min_options:
-            one: "Välj minst <strong>1</strong> alternativ"
+            one: "Välj minst <strong>%{count}</strong> alternativ"
             other: "Välj minst <strong>%{count}</strong> alternativ"
           up_to_max_options:
-            one: "Välj upp till <strong>1</strong> alternativ"
+            one: "Välj upp till <strong>%{count}</strong> alternativ"
             other: "Välj upp till <strong>%{count}</strong> alternativ"
           x_options:
-            one: "Välj <strong>1</strong> alternativ"
+            one: "Välj <strong>%{count}</strong> alternativ"
             other: "Välj <strong>%{count}</strong> alternativ"
           between_min_and_max_options: "Välj mellan <strong>%{min}</strong> och <strong>%{max}</strong> alternativ"
       cast-votes:
@@ -54,11 +52,14 @@ sv:
         insert: Lägg till omröstning
         help:
           options_count: Ange minst 2 alternativ
+          invalid_values: Minimivärde måste vara mindre än det maximala värdet.
         poll_type:
           label: Typ
           regular: Ett val
           multiple: Flera val
           number: Sifferbetyg
+        poll_result:
+          label: Resultat
         poll_config:
           max: Max
           min: Min

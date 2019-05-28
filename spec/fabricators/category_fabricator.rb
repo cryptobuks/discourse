@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 Fabricator(:category) do
   name { sequence(:name) { |n| "Amazing Category #{n}" } }
   user
@@ -28,4 +30,10 @@ end
 
 Fabricator(:link_category, from: :category) do
   before_validation { |category, transients| category.topic_featured_link_allowed = true }
+end
+
+Fabricator(:mailinglist_mirror_category, from: :category) do
+  email_in 'list@example.com'
+  email_in_allow_strangers true
+  mailinglist_mirror true
 end

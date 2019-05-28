@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BadgeQueries
   Reader = <<SQL
   SELECT id user_id, current_timestamp granted_at
@@ -23,7 +25,7 @@ SQL
 SQL
 
   FirstQuote = <<SQL
-  SELECT ids.user_id, q.post_id, q.created_at granted_at
+  SELECT ids.user_id, q.post_id, p3.created_at granted_at
   FROM
   (
     SELECT p1.user_id, MIN(q1.id) id
@@ -34,6 +36,7 @@ SQL
     GROUP BY p1.user_id
   ) ids
   JOIN quoted_posts q ON q.id = ids.id
+  JOIN badge_posts p3 ON q.post_id = p3.id
 SQL
 
   FirstLink = <<SQL
@@ -70,7 +73,7 @@ SQL
     SELECT pa.user_id, min(pa.id) id
     FROM post_actions pa
     JOIN badge_posts p on p.id = pa.post_id
-    WHERE post_action_type_id IN (#{PostActionType.flag_types.values.join(",")}) AND
+    WHERE post_action_type_id IN (#{PostActionType.flag_types_without_custom.values.join(",")}) AND
       (:backfill OR pa.post_id IN (:post_ids) )
     GROUP BY pa.user_id
   ) x
@@ -99,6 +102,15 @@ SQL
   GROUP BY p.user_id
 SQL
 
+  WikiEditor = <<~SQL
+  SELECT DISTINCT ON (pr.user_id) pr.user_id, pr.post_id, pr.created_at granted_at
+  FROM post_revisions pr
+  JOIN badge_posts p on p.id = pr.post_id
+  WHERE p.wiki
+      AND NOT pr.hidden
+      AND (:backfill OR p.id IN (:post_ids))
+SQL
+
   Welcome = <<SQL
   SELECT p.user_id, min(post_id) post_id, min(pa.created_at) granted_at
   FROM post_actions pa
@@ -117,23 +129,6 @@ SQL
         (:backfill OR u.id IN (:user_ids) )
 SQL
 
-  # member for a year + has posted at least once during that year
-  OneYearAnniversary = <<-SQL
-  SELECT u.id AS user_id, MIN(u.created_at + interval '1 year') AS granted_at
-    FROM users u
-    JOIN posts p ON p.user_id = u.id
-   WHERE u.id > 0
-     AND u.active
-     AND NOT u.blocked
-     AND u.created_at + interval '1 year' < now()
-     AND p.deleted_at IS NULL
-     AND NOT p.hidden
-     AND p.created_at + interval '1 year' > now()
-     AND (:backfill OR u.id IN (:user_ids))
-   GROUP BY u.id
-   HAVING COUNT(p.id) > 0
-SQL
-
   FirstMention = <<-SQL
   SELECT acting_user_id AS user_id, min(target_post_id) AS post_id, min(p.created_at) AS granted_at
   FROM user_actions
@@ -150,44 +145,44 @@ SQL
   GROUP BY acting_user_id
 SQL
 
-  def self.invite_badge(count,trust_level)
-"
-  SELECT u.id user_id, current_timestamp granted_at
-  FROM users u
-  WHERE u.id IN (
-    SELECT invited_by_id
-    FROM invites i
-    JOIN users u2 ON u2.id = i.user_id
-    WHERE i.deleted_at IS NULL AND u2.active AND u2.trust_level >= #{trust_level.to_i} AND not u2.blocked
-    GROUP BY invited_by_id
-    HAVING COUNT(*) >= #{count.to_i}
-  ) AND u.active AND NOT u.blocked AND u.id > 0 AND
-    (:backfill OR u.id IN (:user_ids) )
-"
+  def self.invite_badge(count, trust_level)
+    "
+      SELECT u.id user_id, current_timestamp granted_at
+      FROM users u
+      WHERE u.id IN (
+        SELECT invited_by_id
+        FROM invites i
+        JOIN users u2 ON u2.id = i.user_id
+        WHERE i.deleted_at IS NULL AND u2.active AND u2.trust_level >= #{trust_level.to_i} AND u2.silenced_till IS NULL
+        GROUP BY invited_by_id
+        HAVING COUNT(*) >= #{count.to_i}
+      ) AND u.active AND u.silenced_till IS NULL AND u.id > 0 AND
+        (:backfill OR u.id IN (:user_ids) )
+    "
   end
 
   def self.like_badge(count, is_topic)
     # we can do better with dates, but its hard work
-"
-  SELECT p.user_id, p.id post_id, p.updated_at granted_at
-  FROM badge_posts p
-  WHERE #{is_topic ? "p.post_number = 1" : "p.post_number > 1" } AND p.like_count >= #{count.to_i} AND
-    (:backfill OR p.id IN (:post_ids) )
-"
+    "
+      SELECT p.user_id, p.id post_id, p.updated_at granted_at
+      FROM badge_posts p
+      WHERE #{is_topic ? "p.post_number = 1" : "p.post_number > 1" } AND p.like_count >= #{count.to_i} AND
+        (:backfill OR p.id IN (:post_ids) )
+    "
   end
 
   def self.trust_level(level)
     # we can do better with dates, but its hard work figuring this out historically
-"
-  SELECT u.id user_id, current_timestamp granted_at FROM users u
-  WHERE trust_level >= #{level.to_i} AND (
-    :backfill OR u.id IN (:user_ids)
-  )
-"
+    "
+      SELECT u.id user_id, current_timestamp granted_at FROM users u
+      WHERE trust_level >= #{level.to_i} AND (
+        :backfill OR u.id IN (:user_ids)
+      )
+    "
   end
 
   def self.sharing_badge(count)
-<<SQL
+    <<SQL
   SELECT views.user_id, i2.post_id, current_timestamp granted_at
   FROM
   (
@@ -206,8 +201,7 @@ SQL
     <<-SQL
         SELECT tl.user_id, post_id, current_timestamp granted_at
           FROM topic_links tl
-          JOIN posts p  ON p.id = post_id    AND p.deleted_at IS NULL
-          JOIN topics t ON t.id = p.topic_id AND t.deleted_at IS NULL AND t.archetype <> 'private_message'
+          JOIN badge_posts p ON p.id = post_id
          WHERE NOT tl.internal
            AND tl.clicks >= #{count}
       GROUP BY tl.user_id, tl.post_id
@@ -246,6 +240,28 @@ SQL
         AND (:backfill OR us.user_id IN (:user_ids))
       GROUP BY us.user_id, us.likes_given
       HAVING COUNT(*) > #{likes_received}
+    SQL
+  end
+
+  def self.consecutive_visits(days)
+    <<~SQL
+      WITH consecutive_visits AS (
+        SELECT user_id
+             , visited_at
+             , visited_at - (DENSE_RANK() OVER (PARTITION BY user_id ORDER BY visited_at))::int s
+          FROM user_visits
+      ), visits AS (
+        SELECT user_id
+             , MIN(visited_at) "start"
+             , DENSE_RANK() OVER (PARTITION BY user_id ORDER BY s) "rank"
+          FROM consecutive_visits
+      GROUP BY user_id, s
+        HAVING COUNT(*) >= #{days}
+      )
+      SELECT user_id
+           , "start" + interval '#{days} days' "granted_at"
+        FROM visits
+       WHERE "rank" = 1
     SQL
   end
 

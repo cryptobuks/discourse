@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require_dependency 'user'
 
@@ -8,7 +10,7 @@ describe UserSerializer do
     let(:serializer) { UserSerializer.new(user, scope: Guardian.new, root: false) }
     let(:json) { serializer.as_json }
 
-    let(:untrusted_attributes) { %i{bio_raw bio_cooked bio_excerpt location website profile_background card_background} }
+    let(:untrusted_attributes) { %i{bio_raw bio_cooked bio_excerpt location website website_name profile_background card_background} }
 
     it "doesn't serialize untrusted attributes" do
       untrusted_attributes.each { |attr| expect(json).not_to have_key(attr) }
@@ -20,7 +22,7 @@ describe UserSerializer do
       # so we serialize more stuff
       SiteSetting.default_other_auto_track_topics_after_msecs = 0
       SiteSetting.default_other_notification_level_when_replying = 3
-      SiteSetting.default_other_new_topic_duration_minutes = 60*24
+      SiteSetting.default_other_new_topic_duration_minutes = 60 * 24
 
       user = Fabricate.build(:user,
                               user_profile: Fabricate.build(:user_profile),
@@ -31,7 +33,7 @@ describe UserSerializer do
       json = UserSerializer.new(user, scope: Guardian.new(user), root: false).as_json
 
       expect(json[:user_option][:dynamic_favicon]).to eq(true)
-      expect(json[:user_option][:new_topic_duration_minutes]).to eq(60*24)
+      expect(json[:user_option][:new_topic_duration_minutes]).to eq(60 * 24)
       expect(json[:user_option][:auto_track_topics_after_msecs]).to eq(0)
       expect(json[:user_option][:notification_level_when_replying]).to eq(3)
 
@@ -39,13 +41,11 @@ describe UserSerializer do
   end
 
   context "with a user" do
-    let(:user) { Fabricate.build(:user, user_profile: Fabricate.build(:user_profile) ) }
+    fab!(:user) { Fabricate(:user) }
     let(:serializer) { UserSerializer.new(user, scope: Guardian.new, root: false) }
     let(:json) { serializer.as_json }
-
-    it "produces json" do
-      expect(json).to be_present
-    end
+    fab!(:upload) { Fabricate(:upload) }
+    fab!(:upload2) { Fabricate(:upload) }
 
     context "with `enable_names` true" do
       before do
@@ -57,10 +57,9 @@ describe UserSerializer do
       end
     end
 
-
     context "with `enable_names` false" do
       before do
-        SiteSetting.stubs(:enable_names?).returns(false)
+        SiteSetting.enable_names = false
       end
 
       it "has a name" do
@@ -68,23 +67,15 @@ describe UserSerializer do
       end
     end
 
-    context "with filled out card background" do
+    context "with filled out backgrounds" do
       before do
-        user.user_profile.card_background = 'http://card.com'
+        user.user_profile.upload_card_background(upload)
+        user.user_profile.upload_profile_background(upload2)
       end
 
       it "has a profile background" do
-        expect(json[:card_background]).to eq 'http://card.com'
-      end
-    end
-
-    context "with filled out profile background" do
-      before do
-        user.user_profile.profile_background = 'http://background.com'
-      end
-
-      it "has a profile background" do
-        expect(json[:profile_background]).to eq 'http://background.com'
+        expect(json[:card_background_upload_url]).to eq(upload.url)
+        expect(json[:profile_background_upload_url]).to eq(upload2.url)
       end
     end
 
@@ -177,7 +168,7 @@ describe UserSerializer do
   end
 
   context "with custom_fields" do
-    let(:user) { Fabricate(:user) }
+    fab!(:user) { Fabricate(:user) }
     let(:json) { UserSerializer.new(user, scope: Guardian.new, root: false).as_json }
 
     before do
@@ -192,9 +183,84 @@ describe UserSerializer do
     end
 
     it "serializes the fields listed in public_user_custom_fields site setting" do
-      SiteSetting.stubs(:public_user_custom_fields).returns('public_field')
+      SiteSetting.public_user_custom_fields = 'public_field'
       expect(json[:custom_fields]['public_field']).to eq(user.custom_fields['public_field'])
       expect(json[:custom_fields]['secret_field']).to eq(nil)
+    end
+
+    context "with user custom field" do
+      before do
+        plugin = Plugin::Instance.new
+        plugin.whitelist_public_user_custom_field :public_field
+      end
+
+      after do
+        User.plugin_public_user_custom_fields.clear
+      end
+
+      it "serializes the fields listed in plugin_public_user_custom_fields" do
+        expect(json[:custom_fields]['public_field']).to eq(user.custom_fields['public_field'])
+        expect(json[:custom_fields]['secret_field']).to eq(nil)
+      end
+    end
+  end
+
+  context "with user fields" do
+    fab!(:user) { Fabricate(:user) }
+
+    let! :fields do
+      [
+        Fabricate(:user_field),
+        Fabricate(:user_field),
+        Fabricate(:user_field, show_on_profile: true),
+        Fabricate(:user_field, show_on_user_card: true),
+        Fabricate(:user_field, show_on_user_card: true, show_on_profile: true)
+      ]
+    end
+
+    let(:other_user_json) { UserSerializer.new(user, scope: Guardian.new(Fabricate(:user)), root: false).as_json }
+    let(:self_json) { UserSerializer.new(user, scope: Guardian.new(user), root: false).as_json }
+    let(:admin_json) { UserSerializer.new(user, scope: Guardian.new(Fabricate(:admin)), root: false).as_json }
+
+    it "includes the correct fields for each audience" do
+      expect(admin_json[:user_fields].keys).to contain_exactly(*fields.map { |f| f.id.to_s })
+      expect(other_user_json[:user_fields].keys).to contain_exactly(*fields[2..5].map { |f| f.id.to_s })
+      expect(self_json[:user_fields].keys).to contain_exactly(*fields.map { |f| f.id.to_s })
+    end
+
+  end
+
+  context "with user_api_keys" do
+    fab!(:user) { Fabricate(:user) }
+
+    it "sorts keys by last used time" do
+      freeze_time
+
+      user_api_key_0 = Fabricate(:readonly_user_api_key, user: user, last_used_at: 2.days.ago, revoked_at: Time.zone.now)
+      user_api_key_1 = Fabricate(:readonly_user_api_key, user: user, last_used_at: 7.days.ago)
+      user_api_key_2 = Fabricate(:readonly_user_api_key, user: user, last_used_at: 1.days.ago)
+      user_api_key_3 = Fabricate(:readonly_user_api_key, user: user, last_used_at: 4.days.ago, revoked_at: Time.zone.now)
+      user_api_key_4 = Fabricate(:readonly_user_api_key, user: user, last_used_at: 3.days.ago)
+
+      json = UserSerializer.new(user, scope: Guardian.new(user), root: false).as_json
+
+      expect(json[:user_api_keys].size).to eq(3)
+      expect(json[:user_api_keys][0][:id]).to eq(user_api_key_1.id)
+      expect(json[:user_api_keys][1][:id]).to eq(user_api_key_4.id)
+      expect(json[:user_api_keys][2][:id]).to eq(user_api_key_2.id)
+    end
+  end
+
+  context "with missing user profile" do
+    fab!(:user) { Fabricate(:user) }
+
+    it "does not throw an error" do
+      id = user.id
+      UserProfile.delete(id)
+      user_b = User.find(id)
+      json = UserSerializer.new(user_b, scope: Guardian.new(user_b), root: false).as_json
+
+      expect(json[:bio_raw]).to eq nil
     end
   end
 end

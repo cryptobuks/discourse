@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class TagGroupMembership < ActiveRecord::Base
   belongs_to :tag
   belongs_to :tag_group
@@ -10,8 +12,8 @@ end
 #  id           :integer          not null, primary key
 #  tag_id       :integer          not null
 #  tag_group_id :integer          not null
-#  created_at   :datetime
-#  updated_at   :datetime
+#  created_at   :datetime         not null
+#  updated_at   :datetime         not null
 #
 # Indexes
 #

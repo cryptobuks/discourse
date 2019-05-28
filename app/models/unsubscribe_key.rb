@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class UnsubscribeKey < ActiveRecord::Base
   belongs_to :user
   belongs_to :post
@@ -19,9 +21,9 @@ class UnsubscribeKey < ActiveRecord::Base
 
   private
 
-    def generate_random_key
-      self.key = SecureRandom.hex(32)
-    end
+  def generate_random_key
+    self.key = SecureRandom.hex(32)
+  end
 end
 
 # == Schema Information
@@ -30,8 +32,8 @@ end
 #
 #  key                  :string(64)       not null, primary key
 #  user_id              :integer          not null
-#  created_at           :datetime
-#  updated_at           :datetime
+#  created_at           :datetime         not null
+#  updated_at           :datetime         not null
 #  unsubscribe_key_type :string
 #  topic_id             :integer
 #  post_id              :integer

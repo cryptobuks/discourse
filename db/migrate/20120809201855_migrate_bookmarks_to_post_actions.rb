@@ -1,4 +1,6 @@
-class MigrateBookmarksToPostActions < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class MigrateBookmarksToPostActions < ActiveRecord::Migration[4.2]
   def up
     drop_table "bookmarks"
   end

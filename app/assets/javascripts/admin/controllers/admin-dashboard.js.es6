@@ -1,97 +1,90 @@
-import { setting } from 'discourse/lib/computed';
-import AdminDashboard from 'admin/models/admin-dashboard';
-import VersionCheck from 'admin/models/version-check';
-import Report from 'admin/models/report';
-import AdminUser from 'admin/models/admin-user';
-import computed from 'ember-addons/ember-computed-decorators';
+import { setting } from "discourse/lib/computed";
+import computed from "ember-addons/ember-computed-decorators";
+import AdminDashboard from "admin/models/admin-dashboard";
+import VersionCheck from "admin/models/version-check";
 
 const PROBLEMS_CHECK_MINUTES = 1;
 
-const ATTRIBUTES = [ 'disk_space','admins', 'moderators', 'blocked', 'suspended', 'top_traffic_sources',
-                     'top_referred_topics', 'updated_at'];
-
-const REPORTS = [ 'global_reports', 'page_view_reports', 'private_message_reports', 'http_reports',
-                  'user_reports', 'mobile_reports'];
-
-// This controller supports the default interface when you enter the admin section.
 export default Ember.Controller.extend({
-  loading: null,
-  versionCheck: null,
+  isLoading: false,
   dashboardFetchedAt: null,
-  showVersionChecks: setting('version_checks'),
+  exceptionController: Ember.inject.controller("exception"),
+  showVersionChecks: setting("version_checks"),
 
-  @computed('problems.length')
+  @computed("problems.length")
   foundProblems(problemsLength) {
-    return this.currentUser.get('admin') && (problemsLength || 0) > 0;
+    return this.currentUser.get("admin") && (problemsLength || 0) > 0;
   },
 
-  @computed('foundProblems')
-  thereWereProblems(foundProblems) {
-    if (!this.currentUser.get('admin')) { return false; }
+  fetchProblems() {
+    if (this.isLoadingProblems) return;
 
-    if (foundProblems) {
-      this.set('hadProblems', true);
-      return true;
-    } else {
-      return this.get('hadProblems') || false;
+    if (
+      !this.problemsFetchedAt ||
+      moment()
+        .subtract(PROBLEMS_CHECK_MINUTES, "minutes")
+        .toDate() > this.problemsFetchedAt
+    ) {
+      this._loadProblems();
     }
   },
 
   fetchDashboard() {
-    if (!this.get('dashboardFetchedAt') || moment().subtract(30, 'minutes').toDate() > this.get('dashboardFetchedAt')) {
-      this.set('dashboardFetchedAt', new Date());
-      this.set('loading', true);
-      const versionChecks = this.siteSettings.version_checks;
-      AdminDashboard.find().then(d => {
-        if (versionChecks) {
-          this.set('versionCheck', VersionCheck.create(d.version_check));
-        }
+    const versionChecks = this.siteSettings.version_checks;
 
-        REPORTS.forEach(name => this.set(name, d[name].map(r => Report.create(r))));
+    if (this.isLoading || !versionChecks) return;
 
-        const topReferrers = d.top_referrers;
-        if (topReferrers && topReferrers.data) {
-          d.top_referrers.data = topReferrers.data.map(user => AdminUser.create(user));
-          this.set('top_referrers', topReferrers);
-        }
+    if (
+      !this.dashboardFetchedAt ||
+      moment()
+        .subtract(30, "minutes")
+        .toDate() > this.dashboardFetchedAt
+    ) {
+      this.set("isLoading", true);
 
-        ATTRIBUTES.forEach(a => this.set(a, d[a]));
-        this.set('loading', false);
-      });
-    }
+      AdminDashboard.fetch()
+        .then(model => {
+          let properties = {
+            dashboardFetchedAt: new Date()
+          };
 
-    if (!this.get('problemsFetchedAt') || moment().subtract(PROBLEMS_CHECK_MINUTES, 'minutes').toDate() > this.get('problemsFetchedAt')) {
-      this.loadProblems();
+          if (versionChecks) {
+            properties.versionCheck = VersionCheck.create(model.version_check);
+          }
+
+          this.setProperties(properties);
+        })
+        .catch(e => {
+          this.exceptionController.set("thrown", e.jqXHR);
+          this.replaceRoute("exception");
+        })
+        .finally(() => {
+          this.set("isLoading", false);
+        });
     }
   },
 
-  loadProblems() {
-    this.set('loadingProblems', true);
-    this.set('problemsFetchedAt', new Date());
-    AdminDashboard.fetchProblems().then(d => {
-      this.set('problems', d.problems);
-    }).finally(() => {
-      this.set('loadingProblems', false);
+  _loadProblems() {
+    this.setProperties({
+      loadingProblems: true,
+      problemsFetchedAt: new Date()
     });
+
+    AdminDashboard.fetchProblems()
+      .then(model => this.set("problems", model.problems))
+      .finally(() => this.set("loadingProblems", false));
   },
 
-  @computed('problemsFetchedAt')
+  @computed("problemsFetchedAt")
   problemsTimestamp(problemsFetchedAt) {
-    return moment(problemsFetchedAt).format('LLL');
-  },
-
-  @computed('updated_at')
-  updatedTimestamp(updatedAt) {
-    return moment(updatedAt).format('LLL');
+    return moment(problemsFetchedAt)
+      .locale("en")
+      .format("LLL");
   },
 
   actions: {
     refreshProblems() {
-      this.loadProblems();
-    },
-    showTrafficReport() {
-      this.set("showTrafficReport", true);
+      this._loadProblems();
     }
   }
-
 });

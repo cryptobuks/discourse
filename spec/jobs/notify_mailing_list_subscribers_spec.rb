@@ -1,13 +1,15 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 describe Jobs::NotifyMailingListSubscribers do
 
-  let(:mailing_list_user) { Fabricate(:user) }
+  fab!(:mailing_list_user) { Fabricate(:user) }
 
   before { mailing_list_user.user_option.update(mailing_list_mode: true, mailing_list_mode_frequency: 1) }
 
-  let(:user) { Fabricate(:user) }
-  let(:post) { Fabricate(:post, user: user) }
+  fab!(:user) { Fabricate(:user) }
+  fab!(:post) { Fabricate(:post, user: user) }
 
   shared_examples "no emails" do
     it "doesn't send any emails" do
@@ -21,6 +23,13 @@ describe Jobs::NotifyMailingListSubscribers do
       UserNotifications.expects(:mailing_list_notify).with(mailing_list_user, post).once
       Jobs::NotifyMailingListSubscribers.new.execute(post_id: post.id)
     end
+
+    it "triggers :notify_mailing_list_subscribers" do
+      events = DiscourseEvent.track_events do
+        Jobs::NotifyMailingListSubscribers.new.execute(post_id: post.id)
+      end
+      expect(events).to include(event_name: :notify_mailing_list_subscribers, params: [[mailing_list_user], post])
+    end
   end
 
   context "when mailing list mode is globally disabled" do
@@ -31,10 +40,19 @@ describe Jobs::NotifyMailingListSubscribers do
   context "when mailing list mode is globally enabled" do
     before { SiteSetting.disable_mailing_list_mode = false }
 
-    context "with an invalid post_id" do
-      it "throws an error" do
-        expect { Jobs::NotifyMailingListSubscribers.new.execute(post_id: -1) }.to raise_error(Discourse::InvalidParameters)
+    context "when site requires approval and user is not approved" do
+      before do
+        SiteSetting.login_required = true
+        SiteSetting.must_approve_users = true
+
+        User.update_all(approved: false)
       end
+      include_examples "no emails"
+    end
+
+    context "with an invalid post_id" do
+      before { post.update(deleted_at: Time.now) }
+      include_examples "no emails"
     end
 
     context "with a deleted post" do
@@ -59,8 +77,8 @@ describe Jobs::NotifyMailingListSubscribers do
         include_examples "no emails"
       end
 
-      context "to a blocked user" do
-        before { mailing_list_user.update(blocked: true) }
+      context "to a silenced user" do
+        before { mailing_list_user.update(silenced_till: 1.year.from_now) }
         include_examples "no emails"
       end
 
@@ -70,17 +88,12 @@ describe Jobs::NotifyMailingListSubscribers do
       end
 
       context "to an anonymous user" do
-        let(:mailing_list_user) { Fabricate(:anonymous) }
+        fab!(:mailing_list_user) { Fabricate(:anonymous) }
         include_examples "no emails"
       end
 
       context "to an user who has disabled mailing list mode" do
         before { mailing_list_user.user_option.update(mailing_list_mode: false) }
-        include_examples "no emails"
-      end
-
-      context "to an user who has frequency set to 'daily'" do
-        before { mailing_list_user.user_option.update(mailing_list_mode_frequency: 0) }
         include_examples "no emails"
       end
 
@@ -96,6 +109,11 @@ describe Jobs::NotifyMailingListSubscribers do
 
       context "from a muted user" do
         before { MutedUser.create(user: mailing_list_user, muted_user: user) }
+        include_examples "no emails"
+      end
+
+      context "from an ignored user" do
+        before { Fabricate(:ignored_user, user: mailing_list_user, ignored_user: user) }
         include_examples "no emails"
       end
 
@@ -117,10 +135,41 @@ describe Jobs::NotifyMailingListSubscribers do
             mailing_list_user.email_logs.create(email_type: 'foobar', to_address: mailing_list_user.email)
           }
 
-          Jobs::NotifyMailingListSubscribers.new.execute(post_id: post.id)
-          UserNotifications.expects(:mailing_list_notify).with(mailing_list_user, post).never
+          expect do
+            UserNotifications.expects(:mailing_list_notify)
+              .with(mailing_list_user, post)
+              .never
 
-          expect(EmailLog.where(user: mailing_list_user, skipped: true).count).to eq(1)
+            2.times do
+              Jobs::NotifyMailingListSubscribers.new.execute(post_id: post.id)
+            end
+
+            Jobs::NotifyMailingListSubscribers.new.execute(
+              post_id: Fabricate(:post, user: user).id
+            )
+          end.to change { SkippedEmailLog.count }.by(1)
+
+          expect(SkippedEmailLog.exists?(
+            email_type: "mailing_list",
+            user: mailing_list_user,
+            post: post,
+            to_address: mailing_list_user.email,
+            reason_type: SkippedEmailLog.reason_types[:exceeded_emails_limit]
+          )).to eq(true)
+
+          freeze_time(Time.zone.now.tomorrow + 1.second)
+
+          expect do
+            post = Fabricate(:post, user: user)
+
+            UserNotifications.expects(:mailing_list_notify)
+              .with(mailing_list_user, post)
+              .once
+
+            Jobs::NotifyMailingListSubscribers.new.execute(
+              post_id: post.id
+            )
+          end.to change { SkippedEmailLog.count }.by(0)
         end
       end
 
@@ -132,7 +181,13 @@ describe Jobs::NotifyMailingListSubscribers do
           Jobs::NotifyMailingListSubscribers.new.execute(post_id: post.id)
           UserNotifications.expects(:mailing_list_notify).with(mailing_list_user, post).never
 
-          expect(EmailLog.where(user: mailing_list_user, skipped: true).count).to eq(1)
+          expect(SkippedEmailLog.exists?(
+            email_type: "mailing_list",
+            user: mailing_list_user,
+            post: post,
+            to_address: mailing_list_user.email,
+            reason_type: SkippedEmailLog.reason_types[:exceeded_bounces_limit]
+          )).to eq(true)
         end
 
       end
@@ -140,7 +195,7 @@ describe Jobs::NotifyMailingListSubscribers do
     end
 
     context "with a valid post from same user" do
-      let(:post) { Fabricate(:post, user: mailing_list_user) }
+      fab!(:post) { Fabricate(:post, user: mailing_list_user) }
 
       context "to an user who has frequency set to 'daily'" do
         before { mailing_list_user.user_option.update(mailing_list_mode_frequency: 0) }

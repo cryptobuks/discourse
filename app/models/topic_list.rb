@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_dependency 'avatar_lookup'
 require_dependency 'primary_group_lookup'
 
@@ -22,22 +24,27 @@ class TopicList
 
   def self.preload(topics, object)
     if @preload
-      @preload.each{|preload| preload.call(topics, object)}
+      @preload.each { |preload| preload.call(topics, object) }
     end
   end
 
-  attr_accessor :more_topics_url,
-                :prev_topics_url,
-                :draft,
-                :draft_key,
-                :draft_sequence,
-                :filter,
-                :for_period,
-                :per_page,
-                :tags,
-                :current_user
+  attr_accessor(
+    :more_topics_url,
+    :prev_topics_url,
+    :draft,
+    :draft_key,
+    :draft_sequence,
+    :filter,
+    :for_period,
+    :per_page,
+    :top_tags,
+    :current_user,
+    :tags,
+    :shared_drafts,
+    :category
+  )
 
-  def initialize(filter, current_user, topics, opts=nil)
+  def initialize(filter, current_user, topics, opts = nil)
     @filter = filter
     @current_user = current_user
     @topics_input = topics
@@ -47,10 +54,12 @@ class TopicList
       @category = Category.find_by(id: @opts[:category_id])
     end
 
-    preloaded_custom_fields << DiscourseTagging::TAGS_FIELD_NAME if SiteSetting.tagging_enabled
+    if @opts[:tags]
+      @tags = Tag.where(id: @opts[:tags]).all
+    end
   end
 
-  def tags
+  def top_tags
     opts = @category ? { category: @category } : {}
     opts[:guardian] = Guardian.new(@current_user)
     Tag.top_tags(opts)
@@ -88,7 +97,7 @@ class TopicList
 
     # Include bookmarks if you have bookmarked topics
     if @current_user && !post_action_type
-      post_action_type = PostActionType.types[:bookmark] if @topic_lookup.any?{|_,tu| tu && tu.bookmarked}
+      post_action_type = PostActionType.types[:bookmark] if @topic_lookup.any? { |_, tu| tu && tu.bookmarked }
     end
 
     # Data for bookmarks or likes
@@ -107,7 +116,7 @@ class TopicList
       ft.user_data = @topic_lookup[ft.id] if @topic_lookup.present?
 
       if ft.user_data && post_action_lookup && actions = post_action_lookup[ft.id]
-        ft.user_data.post_action_data = {post_action_type => actions}
+        ft.user_data.post_action_data = { post_action_type => actions }
       end
 
       ft.posters = ft.posters_summary(
@@ -129,6 +138,6 @@ class TopicList
   end
 
   def attributes
-    {'more_topics_url' => page}
+    { 'more_topics_url' => page }
   end
 end

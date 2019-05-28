@@ -1,4 +1,4 @@
-import { ajax } from 'discourse/lib/ajax';
+import { ajax } from "discourse/lib/ajax";
 // We use this class to track how long posts in a topic are on the screen.
 const PAUSE_UNLESS_SCROLLED = 1000 * 60 * 3;
 const MAX_TRACKING_TIME = 1000 * 60 * 6;
@@ -17,7 +17,7 @@ export default class {
 
   start(topicId, topicController) {
     const currentTopicId = this._topicId;
-    if (currentTopicId && (currentTopicId !== topicId)) {
+    if (currentTopicId && currentTopicId !== topicId) {
       this.tick();
       this.flush();
     }
@@ -27,7 +27,7 @@ export default class {
     // Create an interval timer if we don't have one.
     if (!this._interval) {
       this._interval = setInterval(() => this.tick(), 1000);
-      $(window).on('scroll.screentrack', () => this.scrolled());
+      $(window).on("scroll.screentrack", () => this.scrolled());
     }
 
     this._topicId = topicId;
@@ -36,9 +36,11 @@ export default class {
 
   stop() {
     // already stopped no need to "extra stop"
-    if(!this._topicId) { return; }
+    if (!this._topicId) {
+      return;
+    }
 
-    $(window).off('scroll.screentrack');
+    $(window).off("scroll.screentrack");
     this.tick();
     this.flush();
     this.reset();
@@ -52,8 +54,9 @@ export default class {
     }
   }
 
-  setOnscreen(onscreen) {
+  setOnscreen(onscreen, readOnscreen) {
     this._onscreen = onscreen;
+    this._readOnscreen = readOnscreen;
   }
 
   // Reset our timers
@@ -66,6 +69,9 @@ export default class {
     this._totalTimings = {};
     this._topicTime = 0;
     this._onscreen = [];
+    this._readOnscreen = [];
+    this._readPosts = {};
+    this._inProgress = false;
   }
 
   scrolled() {
@@ -99,7 +105,7 @@ export default class {
       highestSeen = Math.max(highestSeen, parseInt(postNumber, 10));
     });
 
-    const highestSeenByTopic = this.session.get('highestSeenByTopic');
+    const highestSeenByTopic = this.session.get("highestSeenByTopic");
     if ((highestSeenByTopic[topicId] || 0) < highestSeen) {
       highestSeenByTopic[topicId] = highestSeen;
     }
@@ -108,45 +114,62 @@ export default class {
 
     if (!$.isEmptyObject(newTimings)) {
       if (this.currentUser) {
-        ajax('/topics/timings', {
+        this._inProgress = true;
+
+        ajax("/topics/timings", {
           data: {
             timings: newTimings,
             topic_time: this._topicTime,
             topic_id: topicId
           },
           cache: false,
-          type: 'POST',
+          type: "POST",
           headers: {
-            'X-SILENCE-LOGGER': 'true'
+            "X-SILENCE-LOGGER": "true"
           }
-        }).then(() => {
-          const controller = this._topicController;
-          if (controller) {
-            const postNumbers = Object.keys(newTimings).map(v => parseInt(v, 10));
-            controller.readPosts(topicId, postNumbers);
-          }
-        }).catch(e => {
-          const error = e.jqXHR;
-          if (error.status === 405 && error.responseJSON.error_type === "read_only") return;
-        });
+        })
+          .then(() => {
+            const controller = this._topicController;
+            if (controller) {
+              const postNumbers = Object.keys(newTimings).map(v =>
+                parseInt(v, 10)
+              );
+              controller.readPosts(topicId, postNumbers);
+            }
+          })
+          .catch(e => {
+            const error = e.jqXHR;
+            if (
+              error.status === 405 &&
+              error.responseJSON.error_type === "read_only"
+            )
+              return;
+          })
+          .finally(() => {
+            this._inProgress = false;
+            this._lastFlush = 0;
+          });
       } else if (this._anonCallback) {
         // Anonymous viewer - save to localStorage
         const storage = this.keyValueStore;
 
         // Save total time
-        const existingTime = storage.getInt('anon-topic-time');
-        storage.setItem('anon-topic-time', existingTime + this._topicTime);
+        const existingTime = storage.getInt("anon-topic-time");
+        storage.setItem("anon-topic-time", existingTime + this._topicTime);
 
         // Save unique topic IDs up to a max
-        let topicIds = storage.get('anon-topic-ids');
+        let topicIds = storage.get("anon-topic-ids");
         if (topicIds) {
-          topicIds = topicIds.split(',').map(e => parseInt(e));
+          topicIds = topicIds.split(",").map(e => parseInt(e));
         } else {
           topicIds = [];
         }
-        if (topicIds.indexOf(topicId) === -1 && topicIds.length < ANON_MAX_TOPIC_IDS) {
+        if (
+          topicIds.indexOf(topicId) === -1 &&
+          topicIds.length < ANON_MAX_TOPIC_IDS
+        ) {
           topicIds.push(topicId);
-          storage.setItem('anon-topic-ids', topicIds.join(','));
+          storage.setItem("anon-topic-ids", topicIds.join(","));
         }
 
         // Inform the observer
@@ -179,18 +202,27 @@ export default class {
     const nextFlush = this.siteSettings.flush_timings_secs * 1000;
 
     const rush = Object.keys(timings).some(postNumber => {
-      return timings[postNumber] > 0 && !totalTimings[postNumber];
+      return (
+        timings[postNumber] > 0 &&
+        !totalTimings[postNumber] &&
+        !this._readPosts[postNumber]
+      );
     });
 
-    if (this._lastFlush > nextFlush || rush) {
+    if (!this._inProgress && (this._lastFlush > nextFlush || rush)) {
       this.flush();
     }
 
-    // Don't track timings if we're not in focus
-    if (!Discourse.get("hasFocus")) return;
+    if (Discourse.get("hasFocus")) {
+      this._topicTime += diff;
 
-    this._topicTime += diff;
+      this._onscreen.forEach(
+        postNumber => (timings[postNumber] = (timings[postNumber] || 0) + diff)
+      );
 
-    this._onscreen.forEach(postNumber => timings[postNumber] = (timings[postNumber] || 0) + diff);
+      this._readOnscreen.forEach(postNumber => {
+        this._readPosts[postNumber] = true;
+      });
+    }
   }
 }

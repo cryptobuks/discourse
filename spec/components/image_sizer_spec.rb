@@ -1,11 +1,13 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'image_sizer'
 
 describe ImageSizer do
 
   before do
-    SiteSetting.stubs(:max_image_width).returns(500)
-    SiteSetting.stubs(:max_image_height).returns(500)
+    SiteSetting.max_image_width = 500
+    SiteSetting.max_image_height = 500
   end
 
   it 'returns the same dimensions when smaller than the maximums' do

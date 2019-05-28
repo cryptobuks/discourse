@@ -1,36 +1,81 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe TrustLevel3Requirements do
 
   let(:user) { Fabricate.build(:user) }
   subject(:tl3_requirements) { described_class.new(user) }
+  fab!(:moderator) { Fabricate(:moderator) }
 
   before do
     described_class.clear_cache
   end
 
   def make_view(id, at, user_id)
-    TopicViewItem.add(id, '11.22.33.44', user_id, at, _skip_redis=true)
+    TopicViewItem.add(id, '11.22.33.44', user_id, at, _skip_redis = true)
+  end
+
+  def like_at(created_by, post, created_at)
+    PostActionCreator.new(created_by, post, PostActionType.types[:like], created_at: created_at).perform
   end
 
   describe "requirements" do
+
+    describe "penalty_counts" do
+
+      it "returns if the user has ever been silenced" do
+        expect(tl3_requirements.penalty_counts.silenced).to eq(0)
+        expect(tl3_requirements.penalty_counts.total).to eq(0)
+        UserSilencer.new(user, moderator).silence
+        expect(tl3_requirements.penalty_counts.silenced).to eq(1)
+        expect(tl3_requirements.penalty_counts.total).to eq(1)
+        UserSilencer.new(user, moderator).unsilence
+        expect(tl3_requirements.penalty_counts.silenced).to eq(0)
+        expect(tl3_requirements.penalty_counts.total).to eq(0)
+      end
+
+      it "returns if the user has ever been suspended" do
+        user.save!
+
+        expect(tl3_requirements.penalty_counts.suspended).to eq(0)
+        expect(tl3_requirements.penalty_counts.total).to eq(0)
+
+        UserHistory.create!(
+          target_user_id: user.id,
+          action: UserHistory.actions[:suspend_user]
+        )
+
+        expect(tl3_requirements.penalty_counts.suspended).to eq(1)
+        expect(tl3_requirements.penalty_counts.total).to eq(1)
+
+        UserHistory.create!(
+          target_user_id: user.id,
+          action: UserHistory.actions[:unsuspend_user]
+        )
+
+        expect(tl3_requirements.penalty_counts.suspended).to eq(0)
+        expect(tl3_requirements.penalty_counts.total).to eq(0)
+      end
+    end
+
     it "time_period uses site setting" do
-      SiteSetting.stubs(:tl3_time_period).returns(80)
+      SiteSetting.tl3_time_period = 80
       expect(tl3_requirements.time_period).to eq(80)
     end
 
     it "min_days_visited uses site setting" do
-      SiteSetting.stubs(:tl3_requires_days_visited).returns(66)
+      SiteSetting.tl3_requires_days_visited = 66
       expect(tl3_requirements.min_days_visited).to eq(66)
     end
 
     it "min_topics_replied_to uses site setting" do
-      SiteSetting.stubs(:tl3_requires_topics_replied_to).returns(12)
+      SiteSetting.tl3_requires_topics_replied_to = 12
       expect(tl3_requirements.min_topics_replied_to).to eq(12)
     end
 
     it "min_topics_viewed depends on site setting and number of topics created" do
-      SiteSetting.stubs(:tl3_requires_topics_viewed).returns(75)
+      SiteSetting.tl3_requires_topics_viewed = 75
       described_class.stubs(:num_topics_in_time_period).returns(31)
       expect(tl3_requirements.min_topics_viewed).to eq(23)
     end
@@ -43,7 +88,7 @@ describe TrustLevel3Requirements do
     end
 
     it "min_posts_read depends on site setting and number of posts created" do
-      SiteSetting.stubs(:tl3_requires_posts_read).returns(66)
+      SiteSetting.tl3_requires_posts_read = 66
       described_class.stubs(:num_posts_in_time_period).returns(1234)
       expect(tl3_requirements.min_posts_read).to eq(814)
     end
@@ -56,27 +101,27 @@ describe TrustLevel3Requirements do
     end
 
     it "min_topics_viewed_all_time depends on site setting" do
-      SiteSetting.stubs(:tl3_requires_topics_viewed_all_time).returns(75)
+      SiteSetting.tl3_requires_topics_viewed_all_time = 75
       expect(tl3_requirements.min_topics_viewed_all_time).to eq(75)
     end
 
     it "min_posts_read_all_time depends on site setting" do
-      SiteSetting.stubs(:tl3_requires_posts_read_all_time).returns(1001)
+      SiteSetting.tl3_requires_posts_read_all_time = 1001
       expect(tl3_requirements.min_posts_read_all_time).to eq(1001)
     end
 
     it "max_flagged_posts depends on site setting" do
-      SiteSetting.stubs(:tl3_requires_max_flagged).returns(3)
+      SiteSetting.tl3_requires_max_flagged = 3
       expect(tl3_requirements.max_flagged_posts).to eq(3)
     end
 
     it "min_likes_given depends on site setting" do
-      SiteSetting.stubs(:tl3_requires_likes_given).returns(30)
+      SiteSetting.tl3_requires_likes_given = 30
       expect(tl3_requirements.min_likes_given).to eq(30)
     end
 
     it "min_likes_received depends on site setting" do
-      SiteSetting.stubs(:tl3_requires_likes_received).returns(20)
+      SiteSetting.tl3_requires_likes_received = 20
       expect(tl3_requirements.min_likes_received).to eq(20)
       expect(tl3_requirements.min_likes_received_days).to eq(7)
       expect(tl3_requirements.min_likes_received_users).to eq(5)
@@ -125,12 +170,12 @@ describe TrustLevel3Requirements do
 
       _not_a_reply = create_post(user: user) # user created the topic, so it doesn't count
 
-      topic1      = create_post.topic
+      topic1 = create_post.topic
       _reply1      = create_post(topic: topic1, user: user)
       _reply_again = create_post(topic: topic1, user: user) # two replies in one topic
 
-      topic2      = create_post(created_at: 101.days.ago).topic
-      _reply2      = create_post(topic: topic2, user: user, created_at: 101.days.ago) # topic is over 100 days old
+      topic2 = create_post(created_at: 101.days.ago).topic
+      _reply2 = create_post(topic: topic2, user: user, created_at: 101.days.ago) # topic is over 100 days old
 
       expect(tl3_requirements.num_topics_replied_to).to eq(1)
     end
@@ -221,15 +266,16 @@ describe TrustLevel3Requirements do
 
   describe "num_likes_given" do
     it "counts likes given in the last 100 days" do
-      UserActionCreator.enable
+      UserActionManager.enable
 
       recent_post1 = create_post(created_at: 1.hour.ago)
       recent_post2 = create_post(created_at: 10.days.ago)
       old_post     = create_post(created_at: 102.days.ago)
 
-      Fabricate(:like, user: user, post: recent_post1, created_at: 2.hours.ago)
-      Fabricate(:like, user: user, post: recent_post2, created_at: 5.days.ago)
-      Fabricate(:like, user: user, post: old_post,     created_at: 101.days.ago)
+      user.save
+      like_at(user, recent_post1, 2.hours.ago)
+      like_at(user, recent_post2, 5.days.ago)
+      like_at(user, old_post, 101.days.ago)
 
       expect(tl3_requirements.num_likes_given).to eq(2)
     end
@@ -237,7 +283,7 @@ describe TrustLevel3Requirements do
 
   describe "num_likes_received" do
     it "counts likes received in the last 100 days" do
-      UserActionCreator.enable
+      UserActionManager.enable
 
       t = Fabricate(:topic, user: user, created_at: 102.days.ago)
       old_post     = create_post(topic: t, user: user, created_at: 102.days.ago)
@@ -246,10 +292,10 @@ describe TrustLevel3Requirements do
 
       liker = Fabricate(:user)
       liker2 = Fabricate(:user)
-      Fabricate(:like, user: liker,  post: recent_post1, created_at: 2.hours.ago)
-      Fabricate(:like, user: liker2, post: recent_post1, created_at: 2.hours.ago)
-      Fabricate(:like, user: liker,  post: recent_post2, created_at: 5.days.ago)
-      Fabricate(:like, user: liker,  post: old_post,     created_at: 101.days.ago)
+      like_at(liker, recent_post1, 2.hours.ago)
+      like_at(liker2, recent_post1, 2.hours.ago)
+      like_at(liker, recent_post2, 5.days.ago)
+      like_at(liker, old_post, 101.days.ago)
 
       expect(tl3_requirements.num_likes_received).to eq(3)
       expect(tl3_requirements.num_likes_received_days).to eq(2)
@@ -357,7 +403,24 @@ describe TrustLevel3Requirements do
     end
 
     it "are not met if suspended" do
-      user.stubs(:suspended?).returns(true)
+      user.suspended_till = 3.weeks.from_now
+      expect(tl3_requirements.requirements_met?).to eq(false)
+    end
+
+    it "are not met if silenced" do
+      user.silenced_till = 3.weeks.from_now
+      expect(tl3_requirements.requirements_met?).to eq(false)
+    end
+
+    it "are not met if previously silenced" do
+      user.save
+      UserHistory.create(target_user_id: user.id, action: UserHistory.actions[:silence_user])
+      expect(tl3_requirements.requirements_met?).to eq(false)
+    end
+
+    it "are not met if previously suspended" do
+      user.save
+      UserHistory.create(target_user_id: user.id, action: UserHistory.actions[:suspend_user])
       expect(tl3_requirements.requirements_met?).to eq(false)
     end
 
@@ -372,7 +435,12 @@ describe TrustLevel3Requirements do
     end
 
     it "are lost if suspended" do
-      user.stubs(:suspended?).returns(true)
+      user.suspended_till = 4.weeks.from_now
+      expect(tl3_requirements.requirements_lost?).to eq(true)
+    end
+
+    it "are lost if silenced" do
+      user.silenced_till = 4.weeks.from_now
       expect(tl3_requirements.requirements_lost?).to eq(true)
     end
   end

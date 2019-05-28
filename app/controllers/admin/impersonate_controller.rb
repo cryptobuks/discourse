@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Admin::ImpersonateController < Admin::AdminController
 
   def create
@@ -12,9 +14,9 @@ class Admin::ImpersonateController < Admin::AdminController
     StaffActionLogger.new(current_user).log_impersonate(user)
 
     # Log on as the user
-    log_on_user(user)
+    log_on_user(user, impersonate: true)
 
-    render nothing: true
+    render body: nil
   end
 
 end

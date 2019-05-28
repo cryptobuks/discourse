@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # GroupMessage sends a private message to a group.
 # It will also avoid sending the same message repeatedly, which can happen with
 # notifications to moderators when spam is detected.
@@ -16,11 +18,11 @@ class GroupMessage
 
   include Rails.application.routes.url_helpers
 
-  def self.create(group_name, message_type, opts={})
+  def self.create(group_name, message_type, opts = {})
     GroupMessage.new(group_name, message_type, opts).create
   end
 
-  def initialize(group_name, message_type, opts={})
+  def initialize(group_name, message_type, opts = {})
     @group_name = group_name
     @message_type = message_type
     @opts = opts
@@ -47,10 +49,8 @@ class GroupMessage
     @message_params ||= begin
       h = { base_url: Discourse.base_url }.merge(@opts[:message_params] || {})
       if @opts[:user]
-        h.merge!({
-          username: @opts[:user].username,
-          user_url: user_path(@opts[:user].username)
-        })
+        h.merge!(username: @opts[:user].username,
+                 user_url: user_path(@opts[:user].username))
       end
       h
     end

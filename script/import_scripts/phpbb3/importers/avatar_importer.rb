@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ImportScripts::PhpBB3
   class AvatarImporter
     # @param uploader [ImportScripts::Uploader]
@@ -47,16 +49,16 @@ module ImportScripts::PhpBB3
 
     def get_avatar_path(avatar_type, filename)
       case avatar_type
-        when Constants::AVATAR_TYPE_UPLOADED then
-          filename.gsub!(/_[0-9]+\./, '.') # we need 1337.jpg, not 1337_2983745.jpg
+      when Constants::AVATAR_TYPE_UPLOADED, Constants::AVATAR_TYPE_STRING_UPLOADED then
+        filename.gsub!(/_[0-9]+\./, '.') # we need 1337.jpg, not 1337_2983745.jpg
           get_uploaded_path(filename)
-        when Constants::AVATAR_TYPE_GALLERY then
-          get_gallery_path(filename)
-        when Constants::AVATAR_TYPE_REMOTE then
-          download_avatar(filename)
-        else
-          Rails.logger.error("Invalid avatar type #{avatar_type}. Skipping...")
-          nil
+      when Constants::AVATAR_TYPE_GALLERY, Constants::AVATAR_TYPE_STRING_GALLERY then
+        get_gallery_path(filename)
+      when Constants::AVATAR_TYPE_REMOTE, Constants::AVATAR_TYPE_STRING_REMOTE then
+        download_avatar(filename)
+      else
+        puts "Invalid avatar type #{avatar_type}. Skipping..."
+        nil
       end
     end
 
@@ -65,7 +67,12 @@ module ImportScripts::PhpBB3
       max_image_size_kb = SiteSetting.max_image_size_kb.kilobytes
 
       begin
-        avatar_file = FileHelper.download(url, max_image_size_kb, 'discourse-avatar')
+        avatar_file = FileHelper.download(
+          url,
+          max_file_size: max_image_size_kb,
+          tmp_file_name: 'discourse-avatar',
+          follow_redirect: true
+        )
       rescue StandardError => err
         warn "Error downloading avatar: #{err.message}. Skipping..."
         return nil
@@ -75,7 +82,6 @@ module ImportScripts::PhpBB3
         if avatar_file.size <= max_image_size_kb
           return avatar_file
         else
-          Rails.logger.error("Failed to download remote avatar: #{url} - Image is larger than #{max_image_size_kb} KB")
           return nil
         end
       end
@@ -94,14 +100,14 @@ module ImportScripts::PhpBB3
 
     def is_allowed_avatar_type?(avatar_type)
       case avatar_type
-        when Constants::AVATAR_TYPE_UPLOADED then
-          @settings.import_uploaded_avatars
-        when Constants::AVATAR_TYPE_REMOTE then
-          @settings.import_remote_avatars
-        when Constants::AVATAR_TYPE_GALLERY then
-          @settings.import_gallery_avatars
-        else
-          false
+      when Constants::AVATAR_TYPE_UPLOADED, Constants::AVATAR_TYPE_STRING_UPLOADED then
+        @settings.import_uploaded_avatars
+      when Constants::AVATAR_TYPE_REMOTE, Constants::AVATAR_TYPE_STRING_REMOTE then
+        @settings.import_remote_avatars
+      when Constants::AVATAR_TYPE_GALLERY, Constants::AVATAR_TYPE_STRING_GALLERY then
+        @settings.import_gallery_avatars
+      else
+        false
       end
     end
   end

@@ -1,14 +1,18 @@
-class ForumsController < ApplicationController
+# frozen_string_literal: true
 
-  skip_before_filter :preload_json, :check_xhr
-  skip_before_filter :authorize_mini_profiler, only: [:status]
-  skip_before_filter :redirect_to_login_if_required, only: [:status]
+require "read_only_header"
+
+class ForumsController < ActionController::Base
+  include ReadOnlyHeader
+
+  before_action :check_readonly_mode
+  after_action  :add_readonly_header
 
   def status
     if $shutdown
-      render text: 'shutting down', status: 500, content_type: 'text/plain'
+      render plain: "shutting down", status: 500
     else
-      render text: 'ok', content_type: 'text/plain'
+      render plain: "ok"
     end
   end
 
